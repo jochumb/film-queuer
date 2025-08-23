@@ -1,4 +1,4 @@
-package com.example.filmqueuer.routes
+package me.jochum.filmqueuer.adapters.web
 
 import io.ktor.server.application.*
 import io.ktor.server.response.*

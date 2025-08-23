@@ -4,7 +4,7 @@ plugins {
 }
 
 allprojects {
-    group = "com.example.filmqueuer"
+    group = "me.jochum.filmqueuer"
     version = "1.0.0"
     
     repositories {

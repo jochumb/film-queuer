@@ -1,4 +1,4 @@
-package com.example.filmqueuer.plugins
+package me.jochum.filmqueuer.adapters.web
 
 import io.ktor.http.*
 import io.ktor.server.application.*

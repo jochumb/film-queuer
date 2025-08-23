@@ -10,7 +10,7 @@ plugins {
 }
 
 application {
-    mainClass.set("com.example.filmqueuer.ApplicationKt")
+    mainClass.set("me.jochum.filmqueuer.ApplicationKt")
 
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")

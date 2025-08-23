@@ -1,6 +1,6 @@
-package com.example.filmqueuer
+package me.jochum.filmqueuer
 
-import com.example.filmqueuer.plugins.*
+import me.jochum.filmqueuer.adapters.web.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
