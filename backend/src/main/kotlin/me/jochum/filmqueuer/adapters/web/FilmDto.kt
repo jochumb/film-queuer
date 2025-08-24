@@ -8,5 +8,5 @@ data class FilmDto(
     val title: String,
     val director: String,
     val year: Int,
-    val watched: Boolean = false
+    val watched: Boolean = false,
 )

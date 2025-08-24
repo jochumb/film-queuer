@@ -10,7 +10,7 @@ data class TmdbPersonSearchResponse(
     @SerialName("total_pages")
     val totalPages: Int,
     @SerialName("total_results")
-    val totalResults: Int
+    val totalResults: Int,
 )
 
 @Serializable
@@ -23,7 +23,7 @@ data class TmdbPerson(
     val profilePath: String? = null,
     val popularity: Double = 0.0,
     @SerialName("known_for")
-    val knownFor: List<TmdbKnownFor> = emptyList()
+    val knownFor: List<TmdbKnownFor> = emptyList(),
 )
 
 @Serializable
@@ -36,5 +36,5 @@ data class TmdbKnownFor(
     @SerialName("release_date")
     val releaseDate: String? = null,
     @SerialName("first_air_date")
-    val firstAirDate: String? = null
+    val firstAirDate: String? = null,
 )

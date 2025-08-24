@@ -7,6 +7,7 @@ plugins {
     kotlin("jvm")
     id("io.ktor.plugin") version "3.2.3"
     kotlin("plugin.serialization") version "2.2.10"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
 }
 
 application {
@@ -47,4 +48,35 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+ktlint {
+    version.set("1.0.1")
+    android.set(false)
+    ignoreFailures.set(false)
+    filter {
+        exclude("**/build.gradle.kts")
+    }
+    reporters {
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.PLAIN)
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.CHECKSTYLE)
+    }
+}
+
+// Add linting to check task
+tasks.check {
+    dependsOn(tasks.ktlintCheck)
+}
+
+// Add formatting task
+tasks.register("lint") {
+    dependsOn(tasks.ktlintCheck)
+    description = "Run ktlint checks"
+    group = "verification"
+}
+
+tasks.register("format") {
+    dependsOn(tasks.ktlintFormat)
+    description = "Auto-format code with ktlint"
+    group = "formatting"
 }

@@ -46,12 +46,22 @@ TMDB_API_KEY=your_actual_api_key_here
 
 - Build: `./gradlew :backend:build`
 - Run backend: `./gradlew :backend:run` (port 8080)
+- Run tests: `./gradlew :backend:test`
+- Lint code: `./gradlew :backend:lint`
+- Format code: `./gradlew :backend:format`
 - Run with Docker: `docker-compose up --build`
   - Backend: http://localhost:8080
   - Frontend: http://localhost:3000
+
+### Code Quality
+
+- **Linting**: ktlint enforces Kotlin coding standards
+- **Testing**: JUnit 5 + MockK for unit and integration tests
+- **Architecture**: Hexagonal architecture with dependency injection
 
 ### Notes
 
 - The domain layer is intentionally left minimal for now
 - Future enhancements should respect the hexagonal architecture boundaries
 - All framework-specific code should remain in adapters
+- Run `./gradlew :backend:format` before committing to ensure consistent code style
