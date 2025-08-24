@@ -38,3 +38,60 @@ data class TmdbKnownFor(
     @SerialName("first_air_date")
     val firstAirDate: String? = null,
 )
+
+@Serializable
+data class TmdbPersonCreditsResponse(
+    val cast: List<TmdbCastCredit> = emptyList(),
+    val crew: List<TmdbCrewCredit> = emptyList(),
+)
+
+@Serializable
+data class TmdbCastCredit(
+    val id: Int,
+    val title: String? = null,
+    val name: String? = null,
+    @SerialName("original_title")
+    val originalTitle: String? = null,
+    @SerialName("original_name")
+    val originalName: String? = null,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+    @SerialName("first_air_date")
+    val firstAirDate: String? = null,
+    @SerialName("poster_path")
+    val posterPath: String? = null,
+    @SerialName("vote_average")
+    val voteAverage: Double = 0.0,
+    @SerialName("vote_count")
+    val voteCount: Int = 0,
+    val overview: String? = null,
+    @SerialName("media_type")
+    val mediaType: String? = null,
+    val character: String? = null,
+)
+
+@Serializable
+data class TmdbCrewCredit(
+    val id: Int,
+    val title: String? = null,
+    val name: String? = null,
+    @SerialName("original_title")
+    val originalTitle: String? = null,
+    @SerialName("original_name")
+    val originalName: String? = null,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+    @SerialName("first_air_date")
+    val firstAirDate: String? = null,
+    @SerialName("poster_path")
+    val posterPath: String? = null,
+    @SerialName("vote_average")
+    val voteAverage: Double = 0.0,
+    @SerialName("vote_count")
+    val voteCount: Int = 0,
+    val overview: String? = null,
+    @SerialName("media_type")
+    val mediaType: String? = null,
+    val job: String? = null,
+    val department: String? = null,
+)

@@ -18,20 +18,23 @@ import me.jochum.filmqueuer.adapters.tmdb.TmdbPersonSearchResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.Department
 import me.jochum.filmqueuer.domain.Person
-import me.jochum.filmqueuer.domain.PersonRepository
+import me.jochum.filmqueuer.domain.PersonQueue
+import me.jochum.filmqueuer.domain.PersonSelectionResult
+import me.jochum.filmqueuer.domain.PersonSelectionService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PersonControllerTest {
     private lateinit var tmdbService: TmdbService
-    private lateinit var personRepository: PersonRepository
+    private lateinit var personSelectionService: PersonSelectionService
 
     @BeforeEach
     fun setup() {
         tmdbService = mockk()
-        personRepository = mockk()
+        personSelectionService = mockk()
     }
 
     @Test
@@ -71,7 +74,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService)
                 }
             }
 
@@ -91,7 +94,7 @@ class PersonControllerTest {
         testApplication {
             application {
                 routing {
-                    configurePersonRoutes(tmdbService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService)
                 }
             }
 
@@ -114,12 +117,27 @@ class PersonControllerTest {
                     department = Department.ACTING,
                 )
 
-            coEvery { personRepository.save(person) } returns person
+            val queueId = UUID.randomUUID()
+            val personQueue =
+                PersonQueue(
+                    id = queueId,
+                    personTmdbId = 123,
+                )
+
+            val selectionResult =
+                PersonSelectionResult(
+                    person = person,
+                    queue = personQueue,
+                )
+
+            coEvery {
+                personSelectionService.selectPerson(123, "Tom Hanks", Department.ACTING)
+            } returns selectionResult
 
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService)
                 }
             }
 
@@ -132,39 +150,11 @@ class PersonControllerTest {
 
             // Then
             assertEquals(HttpStatusCode.Created, response.status)
-            assertTrue(response.bodyAsText().contains("Person saved successfully"))
-            coVerify { personRepository.save(person) }
-        }
-
-    @Test
-    fun `GET persons should return all saved persons`() =
-        testApplication {
-            // Given
-            val persons =
-                listOf(
-                    Person(123, "Tom Hanks", Department.ACTING),
-                    Person(456, "Steven Spielberg", Department.DIRECTING),
-                )
-
-            coEvery { personRepository.findAll() } returns persons
-
-            application {
-                configureSerialization()
-                routing {
-                    configurePersonRoutes(tmdbService, personRepository)
-                }
-            }
-
-            // When
-            val response = client.get("/persons")
-
-            // Then
-            assertEquals(HttpStatusCode.OK, response.status)
             val responseBody = response.bodyAsText()
             assertTrue(responseBody.contains("Tom Hanks"))
-            assertTrue(responseBody.contains("Steven Spielberg"))
             assertTrue(responseBody.contains("ACTING"))
-            assertTrue(responseBody.contains("DIRECTING"))
+            assertTrue(responseBody.contains(queueId.toString()))
+            coVerify { personSelectionService.selectPerson(123, "Tom Hanks", Department.ACTING) }
         }
 
     @Test
@@ -178,12 +168,27 @@ class PersonControllerTest {
                     department = Department.OTHER,
                 )
 
-            coEvery { personRepository.save(expectedPerson) } returns expectedPerson
+            val queueId = UUID.randomUUID()
+            val personQueue =
+                PersonQueue(
+                    id = queueId,
+                    personTmdbId = 123,
+                )
+
+            val selectionResult =
+                PersonSelectionResult(
+                    person = expectedPerson,
+                    queue = personQueue,
+                )
+
+            coEvery {
+                personSelectionService.selectPerson(123, "John Doe", Department.OTHER)
+            } returns selectionResult
 
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService)
                 }
             }
 
@@ -196,7 +201,7 @@ class PersonControllerTest {
 
             // Then
             assertEquals(HttpStatusCode.Created, response.status)
-            coVerify { personRepository.save(expectedPerson) }
+            coVerify { personSelectionService.selectPerson(123, "John Doe", Department.OTHER) }
         }
 
     @Test
@@ -207,7 +212,7 @@ class PersonControllerTest {
 
             application {
                 routing {
-                    configurePersonRoutes(tmdbService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService)
                 }
             }
 
@@ -223,12 +228,12 @@ class PersonControllerTest {
     fun `POST persons select should handle repository error`() =
         testApplication {
             // Given
-            coEvery { personRepository.save(any()) } throws RuntimeException("Database Error")
+            coEvery { personSelectionService.selectPerson(123, "John Doe", Department.ACTING) } throws RuntimeException("Database Error")
 
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService)
                 }
             }
 

@@ -30,3 +30,9 @@ data class SavedPersonDto(
     val name: String,
     val department: String,
 )
+
+@Serializable
+data class PersonSelectionResponseDto(
+    val person: SavedPersonDto,
+    val queueId: String,
+)

@@ -35,7 +35,7 @@ object DatabaseConfig {
 
                     // Test the connection and create schema
                     transaction {
-                        SchemaUtils.create(PersonTable)
+                        SchemaUtils.create(PersonTable, QueueTable)
                     }
 
                     println("Successfully connected to database and created schema")
@@ -51,6 +51,18 @@ object DatabaseConfig {
                     println("Retrying in 5 seconds...")
                     delay(5000)
                 }
+            }
+
+            try {
+                when (System.getenv("PURGE_MODE")) {
+                    "queues" -> DatabasePurgeUtility.purgeQueueTable()
+                    "persons" -> DatabasePurgeUtility.purgePersonTable()
+                    "all" -> DatabasePurgeUtility.purgeAllTables()
+                    else -> return@runBlocking
+                }
+            } catch (e: Exception) {
+                println("Error during database purge: ${e.message}")
+                e.printStackTrace()
             }
         }
     }

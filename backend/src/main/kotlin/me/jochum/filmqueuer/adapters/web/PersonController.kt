@@ -10,12 +10,11 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.Department
-import me.jochum.filmqueuer.domain.Person
-import me.jochum.filmqueuer.domain.PersonRepository
+import me.jochum.filmqueuer.domain.PersonSelectionService
 
 fun Route.configurePersonRoutes(
     tmdbService: TmdbService,
-    personRepository: PersonRepository,
+    personSelectionService: PersonSelectionService,
 ) {
     route("/persons") {
         get("/search") {
@@ -53,34 +52,92 @@ fun Route.configurePersonRoutes(
         post("/select") {
             try {
                 val personDto = call.receive<PersonSelectionDto>()
-                val person =
-                    Person(
+
+                val result =
+                    personSelectionService.selectPerson(
                         tmdbId = personDto.tmdbId,
                         name = personDto.name,
                         department = Department.fromString(personDto.department),
                     )
 
-                val savedPerson = personRepository.save(person)
-                call.respond(HttpStatusCode.Created, "Person saved successfully")
+                val response =
+                    PersonSelectionResponseDto(
+                        person =
+                            SavedPersonDto(
+                                tmdbId = result.person.tmdbId,
+                                name = result.person.name,
+                                department = result.person.department.name,
+                            ),
+                        queueId = result.queue.id.toString(),
+                    )
+
+                call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to save person: ${e.message}")
             }
         }
 
-        get {
+        get("/{tmdbId}/filmography") {
+            val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
+            if (tmdbId == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid tmdbId parameter")
+                return@get
+            }
+
+            val department = call.request.queryParameters["department"]
+            if (department.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, "Query parameter 'department' is required")
+                return@get
+            }
+
             try {
-                val persons = personRepository.findAll()
-                val result =
-                    persons.map { person ->
-                        SavedPersonDto(
-                            tmdbId = person.tmdbId,
-                            name = person.name,
-                            department = person.department.name,
-                        )
+                val credits = tmdbService.getPersonMovieCredits(tmdbId)
+
+                val films =
+                    when (Department.fromString(department)) {
+                        Department.ACTING ->
+                            credits.cast.map { credit ->
+                                FilmDto(
+                                    id = credit.id,
+                                    title = credit.title ?: credit.name ?: "Unknown",
+                                    originalTitle = credit.originalTitle ?: credit.originalName,
+                                    releaseDate = credit.releaseDate ?: credit.firstAirDate,
+                                    posterPath = credit.posterPath?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                    voteAverage = credit.voteAverage,
+                                    voteCount = credit.voteCount,
+                                    overview = credit.overview,
+                                    mediaType = credit.mediaType,
+                                    role = credit.character,
+                                )
+                            }
+                        Department.DIRECTING, Department.WRITING, Department.OTHER ->
+                            credits.crew
+                                .filter { credit ->
+                                    when (Department.fromString(department)) {
+                                        Department.DIRECTING -> credit.department == "Directing"
+                                        Department.WRITING -> credit.department == "Writing"
+                                        else -> true
+                                    }
+                                }
+                                .map { credit ->
+                                    FilmDto(
+                                        id = credit.id,
+                                        title = credit.title ?: credit.name ?: "Unknown",
+                                        originalTitle = credit.originalTitle ?: credit.originalName,
+                                        releaseDate = credit.releaseDate ?: credit.firstAirDate,
+                                        posterPath = credit.posterPath?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                        voteAverage = credit.voteAverage,
+                                        voteCount = credit.voteCount,
+                                        overview = credit.overview,
+                                        mediaType = credit.mediaType,
+                                        role = credit.job,
+                                    )
+                                }
                     }
-                call.respond(result)
+
+                call.respond(FilmographyDto(films = films.sortedByDescending { it.releaseDate }))
             } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, "Failed to fetch persons: ${e.message}")
+                call.respond(HttpStatusCode.InternalServerError, "Failed to fetch filmography: ${e.message}")
             }
         }
     }
