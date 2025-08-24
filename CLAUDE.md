@@ -35,6 +35,13 @@ backend/src/main/kotlin/me/jochum/filmqueuer/
 - **Build**: Gradle with Kotlin DSL
 - **Deployment**: Docker Compose
 
+### Environment Configuration
+
+Create a `.env` file in the project root:
+```
+TMDB_API_KEY=your_actual_api_key_here
+```
+
 ### Development Commands
 
 - Build: `./gradlew :backend:build`

@@ -13,7 +13,18 @@
         </header>
         
         <main>
-            <p>Welcome to Film Queuer - Your movie watchlist manager</p>
+            <section class="search-section">
+                <h2>Search for People</h2>
+                <div class="search-container">
+                    <input type="text" id="personSearch" placeholder="Enter a person's name..." />
+                    <button id="searchButton">Search</button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+            </section>
+            
+            <section class="saved-section">
+                <div id="savedPersons"></div>
+            </section>
         </main>
     </div>
     

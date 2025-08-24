@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  database:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD}
+      - MYSQL_DATABASE=filmqueuer
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DATABASE_PASSWORD}"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
+    networks:
+      - film-queuer-network
+
   backend:
     build:
       context: .
@@ -9,6 +27,15 @@ services:
       - "8080:8080"
     environment:
       - KTOR_ENV=docker
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - DATABASE_URL=jdbc:mysql://database:3306/filmqueuer
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
     networks:
       - film-queuer-network
 
@@ -24,3 +51,6 @@ services:
 networks:
   film-queuer-network:
     driver: bridge
+
+volumes:
+  mysql_data:

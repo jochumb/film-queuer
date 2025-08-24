@@ -1,6 +1,7 @@
 package me.jochum.filmqueuer
 
 import me.jochum.filmqueuer.adapters.web.*
+import me.jochum.filmqueuer.adapters.persistence.DatabaseConfig
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -11,6 +12,7 @@ fun main() {
 }
 
 fun Application.module() {
+    DatabaseConfig.init()
     configureHTTP()
     configureSerialization()
     configureRouting()
