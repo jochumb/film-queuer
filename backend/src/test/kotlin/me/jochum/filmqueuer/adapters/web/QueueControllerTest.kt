@@ -196,6 +196,7 @@ class QueueControllerTest {
             coEvery { queueRepository.findAll() } throws RuntimeException("Database Error")
 
             application {
+                configureSerialization()
                 routing {
                     configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
@@ -221,6 +222,7 @@ class QueueControllerTest {
             coEvery { personRepository.findByTmdbId(123) } throws RuntimeException("Person lookup failed")
 
             application {
+                configureSerialization()
                 routing {
                     configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
@@ -232,6 +234,82 @@ class QueueControllerTest {
             // Then
             assertEquals(HttpStatusCode.InternalServerError, response.status)
             assertTrue(response.bodyAsText().contains("Failed to fetch queues"))
+        }
+
+    @Test
+    fun `GET queue by ID should return queue successfully`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val person = Person(123, "John Doe", Department.ACTING)
+            val personQueue = PersonQueue(queueId, 123, Instant.now())
+
+            coEvery { queueRepository.findById(queueId) } returns personQueue
+            coEvery { personRepository.findByTmdbId(123) } returns person
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/$queueId")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            assertTrue(responseBody.contains("\"id\":\"$queueId\""))
+            assertTrue(responseBody.contains("\"type\":\"PERSON\""))
+            assertTrue(responseBody.contains("\"name\":\"John Doe\""))
+            assertTrue(responseBody.contains("\"department\":\"ACTING\""))
+
+            coVerify { queueRepository.findById(queueId) }
+            coVerify { personRepository.findByTmdbId(123) }
+        }
+
+    @Test
+    fun `GET queue by ID should return 404 for non-existent queue`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            coEvery { queueRepository.findById(queueId) } returns null
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/$queueId")
+
+            // Then
+            assertEquals(HttpStatusCode.NotFound, response.status)
+            assertTrue(response.bodyAsText().contains("Queue not found"))
+
+            coVerify { queueRepository.findById(queueId) }
+        }
+
+    @Test
+    fun `GET queue by ID should return 400 for invalid queue ID`() =
+        testApplication {
+            // Given
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/invalid-uuid")
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid queue ID"))
         }
 
     @Test

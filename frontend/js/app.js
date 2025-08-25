@@ -18,7 +18,48 @@ document.addEventListener('DOMContentLoaded', function() {
     testApiConnection();
     setupPersonSearch();
     loadQueues();
+    setupNavigation();
+    handleInitialRoute();
 });
+
+// Navigation setup
+function setupNavigation() {
+    window.addEventListener('popstate', handleRouteChange);
+}
+
+function handleInitialRoute() {
+    const path = window.location.pathname;
+    if (path.startsWith('/queue/')) {
+        const queueId = path.split('/')[2];
+        navigateToQueue(queueId, false); // false = don't push state
+    } else {
+        showHomePage(false);
+    }
+}
+
+function handleRouteChange() {
+    const path = window.location.pathname;
+    if (path.startsWith('/queue/')) {
+        const queueId = path.split('/')[2];
+        showQueuePage(queueId);
+    } else {
+        showHomePage(false);
+    }
+}
+
+function navigateToQueue(queueId, pushState = true) {
+    if (pushState) {
+        history.pushState({ page: 'queue', queueId }, 'Queue', `/queue/${queueId}`);
+    }
+    showQueuePage(queueId);
+}
+
+function navigateToHome(pushState = true) {
+    if (pushState) {
+        history.pushState({ page: 'home' }, 'Film Queuer', '/');
+    }
+    showHomePage(false);
+}
 
 async function testApiConnection() {
     try {
@@ -130,7 +171,7 @@ function displayQueues(queues) {
             <h3>Queue</h3>
             <div class="saved-persons-list">
                 ${queues.map(queue => `
-                    <div class="saved-person-item clickable" onclick="manageQueueFilms('${queue.id}', '${queue.person?.tmdbId || ''}', '${queue.person?.name || 'Unknown'}', '${queue.person?.department || ''}')">
+                    <div class="saved-person-item clickable" onclick="navigateToQueue('${queue.id}')">
                         ${queue.person ? `
                             <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
                         ` : 'Unknown item'}
@@ -144,15 +185,28 @@ function displayQueues(queues) {
     }
 }
 
-function manageQueueFilms(queueId, personTmdbId, personName, department) {
-    // Store current queue data
-    sessionStorage.setItem('currentQueueId', queueId);
-    sessionStorage.setItem('currentPersonTmdbId', personTmdbId);
-    sessionStorage.setItem('currentPersonName', personName);
-    sessionStorage.setItem('currentDepartment', department);
-    
-    // Navigate to film management page
-    showFilmManagementPage();
+async function showQueuePage(queueId) {
+    try {
+        // Fetch queue details
+        const queueResponse = await fetch(`${API_BASE}/queues/${queueId}`);
+        if (!queueResponse.ok) {
+            throw new Error('Queue not found');
+        }
+        const queue = await queueResponse.json();
+        
+        // Store current queue data
+        sessionStorage.setItem('currentQueueId', queueId);
+        sessionStorage.setItem('currentPersonTmdbId', queue.person?.tmdbId || '');
+        sessionStorage.setItem('currentPersonName', queue.person?.name || 'Unknown');
+        sessionStorage.setItem('currentDepartment', queue.person?.department || '');
+        
+        // Show film management page
+        showFilmManagementPage();
+    } catch (error) {
+        console.error('Error loading queue:', error);
+        alert('Queue not found or error loading queue');
+        navigateToHome();
+    }
 }
 
 function showFilmManagementPage() {
@@ -167,7 +221,7 @@ function showFilmManagementPage() {
                 <h1>${personName}'s Films</h1>
                 <p class="queue-subtitle">${translateDepartmentToRole(department)} • Queue ID: ${queueId.substring(0, 8)}...</p>
             </div>
-            <button class="back-button" onclick="showMainPage()">← Back to Queue List</button>
+            <button class="back-button" onclick="navigateToHome()">← Back to Queue List</button>
         </header>
         <main class="two-column-layout">
             <div class="left-column">
@@ -474,8 +528,37 @@ function updateQueueStats(filmCount) {
     }
 }
 
-function showMainPage() {
-    location.reload();
+function showHomePage(pushState = true) {
+    // Store current page state
+    if (pushState) {
+        history.pushState({ page: 'home' }, 'Film Queuer', '/');
+    }
+    
+    // Reset to main page HTML structure
+    document.querySelector('.container').innerHTML = `
+        <header>
+            <h1>Film Queuer</h1>
+            <p>Discover and queue films from your favorite actors and directors</p>
+        </header>
+        <main>
+            <section class="search-section">
+                <h2>Search for a Person</h2>
+                <div class="search-container">
+                    <input type="text" id="personSearch" placeholder="Enter actor or director name...">
+                    <button id="searchButton">Search</button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+            </section>
+            
+            <section class="saved-persons-section">
+                <div id="savedPersons"></div>
+            </section>
+        </main>
+    `;
+    
+    // Re-initialize the home page functionality
+    setupPersonSearch();
+    loadQueues();
 }
 
 function setupQueueDragAndDrop() {

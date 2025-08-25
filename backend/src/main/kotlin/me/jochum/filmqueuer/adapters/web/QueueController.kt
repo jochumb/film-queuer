@@ -17,6 +17,37 @@ import me.jochum.filmqueuer.domain.QueueFilmService
 import me.jochum.filmqueuer.domain.QueueRepository
 import java.util.UUID
 
+private suspend fun mapQueueToDto(
+    queue: me.jochum.filmqueuer.domain.Queue,
+    personRepository: PersonRepository,
+): QueueDto {
+    return when (queue) {
+        is PersonQueue -> {
+            val person = personRepository.findByTmdbId(queue.personTmdbId)
+            QueueDto(
+                id = queue.id.toString(),
+                type = "PERSON",
+                createdAt = queue.createdAt.toString(),
+                person =
+                    person?.let {
+                        SavedPersonDto(
+                            tmdbId = it.tmdbId,
+                            name = it.name,
+                            department = it.department.name,
+                        )
+                    },
+            )
+        }
+        else ->
+            QueueDto(
+                id = queue.id.toString(),
+                type = "UNKNOWN",
+                createdAt = queue.createdAt.toString(),
+                person = null,
+            )
+    }
+}
+
 fun Route.configureQueueRoutes(
     queueRepository: QueueRepository,
     personRepository: PersonRepository,
@@ -26,37 +57,35 @@ fun Route.configureQueueRoutes(
         get {
             try {
                 val queues = queueRepository.findAll()
-                val result =
-                    queues.map { queue ->
-                        when (queue) {
-                            is PersonQueue -> {
-                                val person = personRepository.findByTmdbId(queue.personTmdbId)
-                                QueueDto(
-                                    id = queue.id.toString(),
-                                    type = "PERSON",
-                                    createdAt = queue.createdAt.toString(),
-                                    person =
-                                        person?.let {
-                                            SavedPersonDto(
-                                                tmdbId = it.tmdbId,
-                                                name = it.name,
-                                                department = it.department.name,
-                                            )
-                                        },
-                                )
-                            }
-                            else ->
-                                QueueDto(
-                                    id = queue.id.toString(),
-                                    type = "UNKNOWN",
-                                    createdAt = queue.createdAt.toString(),
-                                    person = null,
-                                )
-                        }
-                    }
+                val result = queues.map { queue -> mapQueueToDto(queue, personRepository) }
                 call.respond(result)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to fetch queues: ${e.message}")
+            }
+        }
+
+        get("/{queueId}") {
+            try {
+                val queueIdString = call.parameters["queueId"]
+                if (queueIdString == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue ID is required")
+                    return@get
+                }
+
+                val queueId = UUID.fromString(queueIdString)
+                val queue = queueRepository.findById(queueId)
+
+                if (queue == null) {
+                    call.respond(HttpStatusCode.NotFound, "Queue not found")
+                    return@get
+                }
+
+                val result = mapQueueToDto(queue, personRepository)
+                call.respond(result)
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to fetch queue: ${e.message}")
             }
         }
 
