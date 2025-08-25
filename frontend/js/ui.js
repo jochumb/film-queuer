@@ -55,6 +55,22 @@ export function showFilmManagementPage(queueId, personName, department) {
         </header>
         <main class="two-column-layout">
             <div class="left-column">
+                <div class="queue-films-section">
+                    <div class="queue-header-sticky">
+                        <div class="queue-title-row">
+                            <h2>Queue</h2>
+                            <div class="queue-stats" id="queueStats">
+                                <span class="film-count">0 films</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="queueFilms" class="queue-films-list">
+                        <p>Loading queue films...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-column">
                 <div class="person-films-section">
                     <div class="filmography-header">
                         <div class="filmography-title">
@@ -69,20 +85,6 @@ export function showFilmManagementPage(queueId, personName, department) {
                     </div>
                     <div id="personFilms" class="person-films-list">
                         <p>Loading films...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="right-column">
-                <div class="queue-films-section">
-                    <div class="queue-header-sticky">
-                        <h2>My Queue</h2>
-                        <div class="queue-stats" id="queueStats">
-                            <span class="film-count">0 films</span>
-                        </div>
-                    </div>
-                    <div id="queueFilms" class="queue-films-list">
-                        <p>Loading queue films...</p>
                     </div>
                 </div>
             </div>
@@ -148,13 +150,18 @@ export function displayQueueFilms(films) {
                         ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
                     </div>
                     <button class="remove-film-btn" onclick="removeFilmFromQueue('${film.tmdbId}', '${film.title.replace(/'/g, "\\\'")}')">
-                        Remove
+                        <i data-feather="trash-2"></i>
                     </button>
                 </div>
             `).join('')}
         `;
     } else {
         queueFilmsContainer.innerHTML = '<div class="empty-queue"><p>No films in your queue yet.</p><p class="empty-queue-subtitle">Browse the filmography and add some films!</p></div>';
+    }
+    
+    // Initialize Feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
     }
 }
 

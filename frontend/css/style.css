@@ -15,6 +15,9 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 header {
@@ -50,6 +53,8 @@ main {
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex: 1;
+    overflow: hidden;
 }
 
 .search-section h2 {
@@ -265,25 +270,34 @@ main {
 .two-column-layout {
     display: flex;
     gap: 2rem;
-    min-height: calc(100vh - 200px);
+    height: 100%;
     padding: 2rem;
+    overflow: hidden;
 }
 
 .left-column {
-    flex: 2;
-    min-width: 0; /* Prevents flex item from overflowing */
+    flex: 1;
+    min-width: 320px;
+    overflow-y: auto;
+    height: 100%;
 }
 
 .right-column {
-    flex: 1;
-    min-width: 320px;
+    flex: 2;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .person-films-section {
     background-color: #f8f9fa;
     border-radius: 8px;
     padding: 1.5rem;
-    height: fit-content;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .filmography-header {
@@ -369,10 +383,7 @@ main {
     background-color: #fff;
     border-radius: 8px;
     border: 2px solid #e9ecef;
-    height: fit-content;
-    position: sticky;
-    top: 2rem;
-    max-height: calc(100vh - 4rem);
+    height: 100%;
     display: flex;
     flex-direction: column;
 }
@@ -385,8 +396,15 @@ main {
     flex-shrink: 0;
 }
 
+.queue-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
 .queue-header-sticky h2 {
-    margin: 0 0 0.5rem 0;
+    margin: 0;
     color: #2c3e50;
 }
 
@@ -426,7 +444,13 @@ main {
     font-style: italic;
 }
 
-.person-films-list, .queue-films-list {
+.person-films-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 1rem;
+}
+
+.queue-films-list {
     margin-top: 1rem;
 }
 
@@ -687,15 +711,25 @@ main {
 }
 
 .remove-film-btn {
-    padding: 8px 16px;
+    padding: 6px 8px;
     background-color: #e74c3c;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9em;
     transition: background-color 0.3s;
     flex-shrink: 0;
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-film-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
 }
 
 .remove-film-btn:hover {

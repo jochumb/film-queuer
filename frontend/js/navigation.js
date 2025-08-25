@@ -12,7 +12,7 @@ export function handleInitialRoute() {
         const queueId = path.split('/')[2];
         navigateToQueue(queueId, false); // false = don't push state
     } else {
-        showHomePage(false);
+        navigateToHome(false);
     }
 }
 
