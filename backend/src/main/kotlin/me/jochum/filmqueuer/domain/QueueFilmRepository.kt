@@ -19,4 +19,9 @@ interface QueueFilmRepository {
         queueId: UUID,
         filmTmdbId: Int,
     ): Boolean
+
+    suspend fun reorderQueueFilms(
+        queueId: UUID,
+        filmOrder: List<Int>,
+    ): Boolean
 }

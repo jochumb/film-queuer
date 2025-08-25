@@ -22,3 +22,8 @@ data class FilmResponseDto(
     val originalTitle: String? = null,
     val releaseDate: String? = null,
 )
+
+@Serializable
+data class ReorderFilmsDto(
+    val filmOrder: List<Int>,
+)

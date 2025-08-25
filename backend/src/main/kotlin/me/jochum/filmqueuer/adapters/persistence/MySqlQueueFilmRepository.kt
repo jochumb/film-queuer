@@ -10,7 +10,8 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import java.time.LocalDateTime
+import org.jetbrains.exposed.sql.update
+import java.time.Instant
 import java.util.UUID
 
 class MySqlQueueFilmRepository : QueueFilmRepository {
@@ -19,13 +20,20 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
         filmTmdbId: Int,
     ): QueueFilm =
         newSuspendedTransaction {
-            val addedAt = LocalDateTime.now()
+            val addedAt = Instant.now()
+            // Get the next sort order (max + 1)
+            val nextSortOrder =
+                QueueFilmTable.selectAll()
+                    .where { QueueFilmTable.queueId eq queueId }
+                    .maxOfOrNull { it[QueueFilmTable.sortOrder] + 1 } ?: 0
+
             QueueFilmTable.insert {
                 it[QueueFilmTable.queueId] = queueId
                 it[QueueFilmTable.filmTmdbId] = filmTmdbId
                 it[QueueFilmTable.addedAt] = addedAt
+                it[QueueFilmTable.sortOrder] = nextSortOrder
             }
-            QueueFilm(queueId, filmTmdbId, addedAt)
+            QueueFilm(queueId, filmTmdbId, addedAt, nextSortOrder)
         }
 
     override suspend fun removeFilmFromQueue(
@@ -43,7 +51,7 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
             (QueueFilmTable innerJoin FilmTable)
                 .selectAll()
                 .where { QueueFilmTable.queueId eq queueId }
-                .orderBy(QueueFilmTable.addedAt)
+                .orderBy(QueueFilmTable.sortOrder)
                 .map { it.toFilm() }
         }
 
@@ -55,6 +63,22 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
             QueueFilmTable.selectAll()
                 .where { (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmTmdbId eq filmTmdbId) }
                 .count() > 0
+        }
+
+    override suspend fun reorderQueueFilms(
+        queueId: UUID,
+        filmOrder: List<Int>,
+    ): Boolean =
+        newSuspendedTransaction {
+            // Update sort order for each film in the provided order
+            filmOrder.forEachIndexed { index, filmTmdbId ->
+                QueueFilmTable.update({
+                    (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmTmdbId eq filmTmdbId)
+                }) {
+                    it[sortOrder] = index
+                }
+            }
+            true
         }
 
     private fun ResultRow.toFilm() =

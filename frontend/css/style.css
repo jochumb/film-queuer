@@ -624,18 +624,46 @@ main {
 
 .queue-film-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     padding: 1rem;
     background-color: white;
     border-radius: 8px;
     border: 1px solid #ddd;
     margin-bottom: 0.5rem;
-    transition: box-shadow 0.3s;
+    transition: box-shadow 0.3s, transform 0.2s;
+    cursor: grab;
+}
+
+.queue-film-item:active {
+    cursor: grabbing;
+}
+
+.queue-film-item.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
 }
 
 .queue-film-item:hover {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.drag-handle {
+    color: #95a5a6;
+    font-size: 14px;
+    margin-right: 1rem;
+    cursor: grab;
+    user-select: none;
+    padding: 0.5rem 0.25rem;
+}
+
+.drag-handle:hover {
+    color: #7f8c8d;
+}
+
+.queue-film-info {
+    flex: 1;
+    margin-right: 1rem;
 }
 
 .queue-film-info h4 {

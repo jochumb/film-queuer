@@ -6,7 +6,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -29,8 +30,8 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val film = Film(550, "Fight Club", null, "1999-10-15")
-            val queueFilm = QueueFilm(queueId, film.tmdbId, LocalDateTime.now())
+            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+            val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
 
             coEvery { filmRepository.save(film) } returns film
             coEvery { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) } returns queueFilm
@@ -49,8 +50,8 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val film = Film(550, "Fight Club", null, "1999-10-15")
-            val queueFilm = QueueFilm(queueId, film.tmdbId, LocalDateTime.now())
+            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+            val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
 
             coEvery { filmRepository.save(film) } returns film // insertIgnore handles duplicates
             coEvery { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) } returns queueFilm
@@ -105,8 +106,8 @@ class QueueFilmServiceTest {
             val queueId = UUID.randomUUID()
             val expectedFilms =
                 listOf(
-                    Film(550, "Fight Club", null, "1999-10-15"),
-                    Film(13, "Forrest Gump", null, "1994-07-06"),
+                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
                 )
 
             coEvery { queueFilmRepository.findFilmsByQueueId(queueId) } returns expectedFilms
@@ -174,7 +175,7 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val film = Film(550, "Fight Club", null, "1999-10-15")
+            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
             val exception = RuntimeException("Database error")
 
             coEvery { filmRepository.save(film) } returns film
@@ -193,11 +194,83 @@ class QueueFilmServiceTest {
         }
 
     @Test
+    fun `reorderQueueFilms should delegate to repository`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmOrder = listOf(550, 238, 13)
+
+            coEvery { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) } returns true
+
+            // When
+            val result = service.reorderQueueFilms(queueId, filmOrder)
+
+            // Then
+            assertTrue(result)
+            coVerify { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) }
+        }
+
+    @Test
+    fun `reorderQueueFilms should return false when repository fails`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmOrder = listOf(550, 238)
+
+            coEvery { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) } returns false
+
+            // When
+            val result = service.reorderQueueFilms(queueId, filmOrder)
+
+            // Then
+            assertFalse(result)
+            coVerify { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) }
+        }
+
+    @Test
+    fun `reorderQueueFilms should handle empty film order list`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val emptyOrder = emptyList<Int>()
+
+            coEvery { queueFilmRepository.reorderQueueFilms(queueId, emptyOrder) } returns true
+
+            // When
+            val result = service.reorderQueueFilms(queueId, emptyOrder)
+
+            // Then
+            assertTrue(result)
+            coVerify { queueFilmRepository.reorderQueueFilms(queueId, emptyOrder) }
+        }
+
+    @Test
+    fun `reorderQueueFilms should propagate repository exceptions`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmOrder = listOf(550, 238)
+            val exception = RuntimeException("Database reorder failed")
+
+            coEvery { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) } throws exception
+
+            // When & Then
+            try {
+                service.reorderQueueFilms(queueId, filmOrder)
+                assertTrue(false, "Expected exception to be thrown")
+            } catch (e: RuntimeException) {
+                assertEquals("Database reorder failed", e.message)
+            }
+
+            coVerify { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) }
+        }
+
+    @Test
     fun `service should handle film save failure`() =
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val film = Film(550, "Fight Club", null, "1999-10-15")
+            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
             val exception = RuntimeException("Film save failed")
 
             coEvery { filmRepository.save(film) } throws exception

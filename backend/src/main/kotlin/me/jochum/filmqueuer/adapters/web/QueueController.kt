@@ -8,6 +8,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import me.jochum.filmqueuer.domain.Film
 import me.jochum.filmqueuer.domain.PersonQueue
@@ -75,7 +76,7 @@ fun Route.configureQueueRoutes(
                         tmdbId = filmRequest.tmdbId,
                         title = filmRequest.title,
                         originalTitle = filmRequest.originalTitle,
-                        releaseDate = filmRequest.releaseDate,
+                        releaseDate = filmRequest.releaseDate.toLocalDate(),
                     )
 
                 queueFilmService.addFilmToQueue(queueId, film)
@@ -106,7 +107,7 @@ fun Route.configureQueueRoutes(
                                     tmdbId = film.tmdbId,
                                     title = film.title,
                                     originalTitle = film.originalTitle,
-                                    releaseDate = film.releaseDate,
+                                    releaseDate = film.releaseDate.toDateString(),
                                 )
                             },
                     )
@@ -145,6 +146,31 @@ fun Route.configureQueueRoutes(
                 call.respond(HttpStatusCode.BadRequest, "Invalid film TMDB ID format: ${e.message}")
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to remove film from queue: ${e.message}")
+            }
+        }
+
+        put("/{queueId}/films/reorder") {
+            try {
+                val queueIdString = call.parameters["queueId"]
+                if (queueIdString == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue ID is required")
+                    return@put
+                }
+
+                val queueId = UUID.fromString(queueIdString)
+                val reorderRequest = call.receive<ReorderFilmsDto>()
+
+                val success = queueFilmService.reorderQueueFilms(queueId, reorderRequest.filmOrder)
+
+                if (success) {
+                    call.respond(HttpStatusCode.OK, "Films reordered successfully")
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, "Failed to reorder films")
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to reorder films: ${e.message}")
             }
         }
     }

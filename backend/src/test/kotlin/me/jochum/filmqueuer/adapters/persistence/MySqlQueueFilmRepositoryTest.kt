@@ -12,7 +12,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -48,7 +49,7 @@ class MySqlQueueFilmRepositoryTest {
             // Given
             val queueId = UUID.randomUUID()
             val filmTmdbId = 550
-            val film = Film(filmTmdbId, "Fight Club", null, "1999-10-15")
+            val film = Film(filmTmdbId, "Fight Club", null, LocalDate.of(1999, 10, 15))
 
             // Create queue and film first
             filmRepository.save(film)
@@ -60,8 +61,8 @@ class MySqlQueueFilmRepositoryTest {
             // Then
             assertEquals(queueId, result.queueId)
             assertEquals(filmTmdbId, result.filmTmdbId)
-            assertTrue(result.addedAt.isBefore(LocalDateTime.now().plusMinutes(1)))
-            assertTrue(result.addedAt.isAfter(LocalDateTime.now().minusMinutes(1)))
+            assertTrue(result.addedAt.isBefore(Instant.now().plusSeconds(60)))
+            assertTrue(result.addedAt.isAfter(Instant.now().minusSeconds(60)))
         }
 
     @Test
@@ -70,7 +71,7 @@ class MySqlQueueFilmRepositoryTest {
             // Given
             val queueId = UUID.randomUUID()
             val filmTmdbId = 550
-            val film = Film(filmTmdbId, "Fight Club", null, "1999-10-15")
+            val film = Film(filmTmdbId, "Fight Club", null, LocalDate.of(1999, 10, 15))
 
             filmRepository.save(film)
             createTestQueue(queueId)
@@ -106,9 +107,9 @@ class MySqlQueueFilmRepositoryTest {
             val queueId = UUID.randomUUID()
             val films =
                 listOf(
-                    Film(550, "Fight Club", null, "1999-10-15"),
-                    Film(13, "Forrest Gump", null, "1994-07-06"),
-                    Film(238, "The Godfather", null, "1972-03-14"),
+                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(238, "The Godfather", null, LocalDate.of(1972, 3, 14)),
                 )
 
             createTestQueue(queueId)
@@ -163,7 +164,7 @@ class MySqlQueueFilmRepositoryTest {
             // Given
             val queueId = UUID.randomUUID()
             val filmTmdbId = 550
-            val film = Film(filmTmdbId, "Fight Club", null, "1999-10-15")
+            val film = Film(filmTmdbId, "Fight Club", null, LocalDate.of(1999, 10, 15))
 
             filmRepository.save(film)
             createTestQueue(queueId)
@@ -198,7 +199,7 @@ class MySqlQueueFilmRepositoryTest {
             val queue1Id = UUID.randomUUID()
             val queue2Id = UUID.randomUUID()
             val filmTmdbId = 550
-            val film = Film(filmTmdbId, "Fight Club", null, "1999-10-15")
+            val film = Film(filmTmdbId, "Fight Club", null, LocalDate.of(1999, 10, 15))
 
             filmRepository.save(film)
             createTestQueue(queue1Id)
@@ -215,11 +216,175 @@ class MySqlQueueFilmRepositoryTest {
         }
 
     @Test
+    fun `reorderQueueFilms should update sort order correctly`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val films =
+                listOf(
+                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(238, "The Godfather", null, LocalDate.of(1972, 3, 14)),
+                )
+
+            createTestQueue(queueId)
+            films.forEach { filmRepository.save(it) }
+
+            // Add films to queue
+            films.forEach { film ->
+                repository.addFilmToQueue(queueId, film.tmdbId)
+            }
+
+            // When - Reorder films (reverse order)
+            val newOrder = listOf(238, 13, 550) // The Godfather, Forrest Gump, Fight Club
+            val result = repository.reorderQueueFilms(queueId, newOrder)
+
+            // Then
+            assertTrue(result)
+
+            val reorderedFilms = repository.findFilmsByQueueId(queueId)
+            assertEquals(3, reorderedFilms.size)
+            assertEquals(238, reorderedFilms[0].tmdbId) // The Godfather first
+            assertEquals(13, reorderedFilms[1].tmdbId) // Forrest Gump second
+            assertEquals(550, reorderedFilms[2].tmdbId) // Fight Club last
+        }
+
+    @Test
+    fun `reorderQueueFilms should handle partial reorder`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val films =
+                listOf(
+                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(238, "The Godfather", null, LocalDate.of(1972, 3, 14)),
+                )
+
+            createTestQueue(queueId)
+            films.forEach { filmRepository.save(it) }
+            films.forEach { film ->
+                repository.addFilmToQueue(queueId, film.tmdbId)
+            }
+
+            // When - Only reorder first two films
+            val partialOrder = listOf(13, 550) // Forrest Gump, Fight Club
+            val result = repository.reorderQueueFilms(queueId, partialOrder)
+
+            // Then
+            assertTrue(result)
+
+            val reorderedFilms = repository.findFilmsByQueueId(queueId)
+            assertEquals(3, reorderedFilms.size)
+            assertEquals(13, reorderedFilms[0].tmdbId) // Forrest Gump first
+            assertEquals(550, reorderedFilms[1].tmdbId) // Fight Club second
+            // The Godfather should remain in its original position with higher sort order
+        }
+
+    @Test
+    fun `reorderQueueFilms should handle empty order list`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            createTestQueue(queueId)
+
+            // When
+            val result = repository.reorderQueueFilms(queueId, emptyList())
+
+            // Then
+            assertTrue(result) // Should succeed even with empty list
+        }
+
+    @Test
+    fun `reorderQueueFilms should handle non-existent films gracefully`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+
+            createTestQueue(queueId)
+            filmRepository.save(film)
+            repository.addFilmToQueue(queueId, film.tmdbId)
+
+            // When - Try to reorder with a non-existent film ID
+            val orderWithNonExistent = listOf(550, 999) // 999 doesn't exist in queue
+            val result = repository.reorderQueueFilms(queueId, orderWithNonExistent)
+
+            // Then
+            assertTrue(result) // Should still succeed
+
+            val films = repository.findFilmsByQueueId(queueId)
+            assertEquals(1, films.size)
+            assertEquals(550, films[0].tmdbId)
+        }
+
+    @Test
+    fun `findFilmsByQueueId should return films ordered by sortOrder`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val films =
+                listOf(
+                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(238, "The Godfather", null, LocalDate.of(1972, 3, 14)),
+                )
+
+            createTestQueue(queueId)
+            films.forEach { filmRepository.save(it) }
+
+            // Add films in one order
+            films.forEach { film ->
+                repository.addFilmToQueue(queueId, film.tmdbId)
+                Thread.sleep(10) // Small delay to ensure different timestamps
+            }
+
+            // Reorder them differently
+            repository.reorderQueueFilms(queueId, listOf(238, 550, 13))
+
+            // When
+            val result = repository.findFilmsByQueueId(queueId)
+
+            // Then - Should be ordered by sortOrder, not addedAt
+            assertEquals(3, result.size)
+            assertEquals(238, result[0].tmdbId) // The Godfather (sortOrder 0)
+            assertEquals(550, result[1].tmdbId) // Fight Club (sortOrder 1)
+            assertEquals(13, result[2].tmdbId) // Forrest Gump (sortOrder 2)
+        }
+
+    @Test
+    fun `addFilmToQueue should assign next available sort order`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val films =
+                listOf(
+                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                )
+
+            createTestQueue(queueId)
+            films.forEach { filmRepository.save(it) }
+
+            // When - Add films sequentially
+            val result1 = repository.addFilmToQueue(queueId, 550)
+            val result2 = repository.addFilmToQueue(queueId, 13)
+
+            // Then - Each film should get the next sort order
+            assertEquals(0, result1.sortOrder)
+            assertEquals(1, result2.sortOrder)
+
+            val retrievedFilms = repository.findFilmsByQueueId(queueId)
+            assertEquals(550, retrievedFilms[0].tmdbId) // First added, sortOrder 0
+            assertEquals(13, retrievedFilms[1].tmdbId) // Second added, sortOrder 1
+        }
+
+    @Test
     fun `should prevent duplicate film entries in same queue`() {
         // Given
         val queueId = UUID.randomUUID()
         val filmTmdbId = 550
-        val film = Film(filmTmdbId, "Fight Club", null, "1999-10-15")
+        val film = Film(filmTmdbId, "Fight Club", null, LocalDate.of(1999, 10, 15))
 
         runBlocking {
             filmRepository.save(film)
@@ -253,7 +418,7 @@ class MySqlQueueFilmRepositoryTest {
             QueueTable.insert {
                 it[id] = queueId
                 it[type] = "PERSON"
-                it[createdAt] = LocalDateTime.now()
+                it[createdAt] = Instant.now()
             }
         }
     }

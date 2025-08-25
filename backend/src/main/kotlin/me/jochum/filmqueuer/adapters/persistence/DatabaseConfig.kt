@@ -57,6 +57,7 @@ object DatabaseConfig {
                 when (System.getenv("PURGE_MODE")) {
                     "queues" -> DatabasePurgeUtility.purgeQueueTable()
                     "persons" -> DatabasePurgeUtility.purgePersonTable()
+                    "films" -> DatabasePurgeUtility.purgeFilmTables()
                     "all" -> DatabasePurgeUtility.purgeAllTables()
                     else -> return@runBlocking
                 }

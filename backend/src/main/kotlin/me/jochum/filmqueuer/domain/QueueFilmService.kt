@@ -28,4 +28,9 @@ class QueueFilmService(
         queueId: UUID,
         filmTmdbId: Int,
     ): Boolean = queueFilmRepository.isFilmInQueue(queueId, filmTmdbId)
+
+    suspend fun reorderQueueFilms(
+        queueId: UUID,
+        filmOrder: List<Int>,
+    ): Boolean = queueFilmRepository.reorderQueueFilms(queueId, filmOrder)
 }

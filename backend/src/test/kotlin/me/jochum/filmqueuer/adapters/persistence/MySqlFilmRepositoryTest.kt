@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -42,7 +43,7 @@ class MySqlFilmRepositoryTest {
                     tmdbId = 550,
                     title = "Fight Club",
                     originalTitle = "Fight Club",
-                    releaseDate = "1999-10-15",
+                    releaseDate = LocalDate.of(1999, 10, 15),
                 )
 
             // When
@@ -61,8 +62,8 @@ class MySqlFilmRepositoryTest {
     fun `save should handle duplicate tmdbId with insertIgnore`() =
         runBlocking {
             // Given
-            val film1 = Film(550, "Fight Club", "Fight Club", "1999-10-15")
-            val film2 = Film(550, "Different Title", null, "2000-01-01")
+            val film1 = Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15))
+            val film2 = Film(550, "Different Title", null, LocalDate.of(2000, 1, 1))
 
             // When
             repository.save(film1)
@@ -79,7 +80,7 @@ class MySqlFilmRepositoryTest {
     fun `findByTmdbId should return film when exists`() =
         runBlocking {
             // Given
-            val film = Film(550, "Fight Club", null, "1999-10-15")
+            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
             repository.save(film)
 
             // When
@@ -106,9 +107,9 @@ class MySqlFilmRepositoryTest {
             // Given
             val films =
                 listOf(
-                    Film(550, "Fight Club", "Fight Club", "1999-10-15"),
-                    Film(13, "Forrest Gump", null, "1994-07-06"),
-                    Film(238, "The Godfather", null, "1972-03-14"),
+                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(238, "The Godfather", null, LocalDate.of(1972, 3, 14)),
                 )
             films.forEach { repository.save(it) }
 

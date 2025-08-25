@@ -1,7 +1,7 @@
 package me.jochum.filmqueuer.domain
 
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -13,7 +13,7 @@ class QueueTest {
         // Given
         val id = UUID.randomUUID()
         val personTmdbId = 123
-        val createdAt = LocalDateTime.now()
+        val createdAt = Instant.now()
 
         // When
         val personQueue =
@@ -45,8 +45,8 @@ class QueueTest {
 
         // Then
         assertNotNull(personQueue.createdAt)
-        assertTrue(personQueue.createdAt.isBefore(LocalDateTime.now().plusSeconds(1)))
-        assertTrue(personQueue.createdAt.isAfter(LocalDateTime.now().minusSeconds(1)))
+        assertTrue(personQueue.createdAt.isBefore(Instant.now().plusSeconds(1)))
+        assertTrue(personQueue.createdAt.isAfter(Instant.now().minusSeconds(1)))
     }
 
     @Test
@@ -54,7 +54,7 @@ class QueueTest {
         // Given
         val id = UUID.randomUUID()
         val personTmdbId = 123
-        val createdAt = LocalDateTime.now()
+        val createdAt = Instant.now()
 
         // When
         val queue1 = PersonQueue(id = id, personTmdbId = personTmdbId, createdAt = createdAt)
@@ -70,7 +70,7 @@ class QueueTest {
         // Given
         val id = UUID.randomUUID()
         val personTmdbId = 123
-        val createdAt = LocalDateTime.now()
+        val createdAt = Instant.now()
 
         // When
         val personQueue = PersonQueue(id = id, personTmdbId = personTmdbId, createdAt = createdAt)

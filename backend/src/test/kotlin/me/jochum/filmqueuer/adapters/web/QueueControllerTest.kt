@@ -3,6 +3,7 @@ package me.jochum.filmqueuer.adapters.web
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -23,7 +24,8 @@ import me.jochum.filmqueuer.domain.QueueFilmService
 import me.jochum.filmqueuer.domain.QueueRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -52,7 +54,7 @@ class QueueControllerTest {
                 )
 
             val queueId = UUID.randomUUID()
-            val createdAt = LocalDateTime.now()
+            val createdAt = Instant.now()
             val personQueue =
                 PersonQueue(
                     id = queueId,
@@ -90,7 +92,7 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val createdAt = LocalDateTime.now()
+            val createdAt = Instant.now()
             val personQueue =
                 PersonQueue(
                     id = queueId,
@@ -155,7 +157,7 @@ class QueueControllerTest {
 
             val queue1Id = UUID.randomUUID()
             val queue2Id = UUID.randomUUID()
-            val createdAt = LocalDateTime.now()
+            val createdAt = Instant.now()
 
             val queue1 = PersonQueue(queue1Id, 123, createdAt)
             val queue2 = PersonQueue(queue2Id, 456, createdAt)
@@ -213,7 +215,7 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val personQueue = PersonQueue(queueId, 123, LocalDateTime.now())
+            val personQueue = PersonQueue(queueId, 123, Instant.now())
 
             coEvery { queueRepository.findAll() } returns listOf(personQueue)
             coEvery { personRepository.findByTmdbId(123) } throws RuntimeException("Person lookup failed")
@@ -242,9 +244,9 @@ class QueueControllerTest {
                     tmdbId = 550,
                     title = "Fight Club",
                     originalTitle = "Fight Club",
-                    releaseDate = "1999-10-15",
+                    releaseDate = LocalDate.of(1999, 10, 15),
                 )
-            val queueFilm = QueueFilm(queueId, film.tmdbId, LocalDateTime.now())
+            val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
 
             coEvery { queueFilmService.addFilmToQueue(queueId, film) } returns queueFilm
 
@@ -307,8 +309,8 @@ class QueueControllerTest {
             val queueId = UUID.randomUUID()
             val films =
                 listOf(
-                    Film(550, "Fight Club", "Fight Club", "1999-10-15"),
-                    Film(13, "Forrest Gump", null, "1994-07-06"),
+                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15)),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
                 )
 
             coEvery { queueFilmService.getQueueFilms(queueId) } returns films
@@ -497,6 +499,180 @@ class QueueControllerTest {
                     responseBody.contains("NumberFormatException") ||
                     responseBody.contains("For input string"),
             )
+        }
+
+    @Test
+    fun `PUT queue films reorder should reorder films successfully`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmOrder = listOf(550, 238, 13)
+
+            coEvery { queueFilmService.reorderQueueFilms(queueId, filmOrder) } returns true
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.put("/queues/$queueId/films/reorder") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        """
+                        {
+                            "filmOrder": [550, 238, 13]
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.bodyAsText().contains("Films reordered successfully"))
+
+            coVerify { queueFilmService.reorderQueueFilms(queueId, filmOrder) }
+        }
+
+    @Test
+    fun `PUT queue films reorder should return bad request for invalid queue ID`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.put("/queues/invalid-uuid/films/reorder") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"filmOrder": [550, 238]}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid queue ID"))
+        }
+
+    @Test
+    fun `PUT queue films reorder should return bad request when queue ID is missing`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.put("/queues//films/reorder") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"filmOrder": [550]}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.NotFound, response.status)
+        }
+
+    @Test
+    fun `PUT queue films reorder should handle service failure`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmOrder = listOf(550, 238)
+
+            coEvery { queueFilmService.reorderQueueFilms(queueId, filmOrder) } returns false
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.put("/queues/$queueId/films/reorder") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        """
+                        {
+                            "filmOrder": [550, 238]
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Failed to reorder films"))
+
+            coVerify { queueFilmService.reorderQueueFilms(queueId, filmOrder) }
+        }
+
+    @Test
+    fun `PUT queue films reorder should handle service exceptions`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmOrder = listOf(550)
+
+            coEvery { queueFilmService.reorderQueueFilms(queueId, filmOrder) } throws RuntimeException("Database error")
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.put("/queues/$queueId/films/reorder") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"filmOrder": [550]}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            assertTrue(response.bodyAsText().contains("Failed to reorder films"))
+            assertTrue(response.bodyAsText().contains("Database error"))
+        }
+
+    @Test
+    fun `PUT queue films reorder should handle empty film order list`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val emptyOrder = emptyList<Int>()
+
+            coEvery { queueFilmService.reorderQueueFilms(queueId, emptyOrder) } returns true
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.put("/queues/$queueId/films/reorder") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"filmOrder": []}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.bodyAsText().contains("Films reordered successfully"))
+
+            coVerify { queueFilmService.reorderQueueFilms(queueId, emptyOrder) }
         }
 
     @Test

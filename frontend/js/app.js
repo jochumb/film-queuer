@@ -305,7 +305,7 @@ function displayFilteredFilms(thresholdPercentage) {
                                 ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
                                 ${film.role ? `<p class="role">as ${film.role}</p>` : ''}
                                 ${film.voteAverage > 0 ? `<p class="rating">★ ${film.voteAverage.toFixed(1)} (${film.voteCount} votes)</p>` : ''}
-                                <button class="add-film-btn ${isInQueue ? 'in-queue' : ''}" onclick="addFilmToQueue('${film.id}', '${film.title.replace(/'/g, "\\\'")}'))" ${isInQueue ? 'disabled' : ''}>
+                                <button class="add-film-btn ${isInQueue ? 'in-queue' : ''}" onclick="addFilmToQueue('${film.id}', '${film.title.replace(/'/g, "\\\'")}')" ${isInQueue ? 'disabled' : ''}>
                                     ${isInQueue ? 'In Queue' : 'Add to Queue'}
                                 </button>
                             </div>
@@ -340,7 +340,8 @@ async function loadQueueFilms(queueId) {
             
             queueFilmsContainer.innerHTML = `
                 ${data.films.map(film => `
-                    <div class="queue-film-item">
+                    <div class="queue-film-item" draggable="true" data-film-tmdb-id="${film.tmdbId}">
+                        <div class="drag-handle">⋮⋮</div>
                         <div class="queue-film-info">
                             <h4>${film.title}</h4>
                             ${film.originalTitle && film.originalTitle !== film.title ? 
@@ -354,6 +355,9 @@ async function loadQueueFilms(queueId) {
                     </div>
                 `).join('')}
             `;
+            
+            // Setup drag and drop functionality
+            setupQueueDragAndDrop();
             updateQueueStats(data.films.length);
         } else {
             // Clear queued films set when queue is empty
@@ -472,4 +476,98 @@ function updateQueueStats(filmCount) {
 
 function showMainPage() {
     location.reload();
+}
+
+function setupQueueDragAndDrop() {
+    const queueItems = document.querySelectorAll('.queue-film-item');
+    let draggedItem = null;
+
+    queueItems.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            draggedItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            draggedItem = null;
+        });
+
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const afterElement = getDragAfterElement(this.parentNode, e.clientY);
+            if (afterElement == null) {
+                this.parentNode.appendChild(draggedItem);
+            } else {
+                this.parentNode.insertBefore(draggedItem, afterElement);
+            }
+        });
+    });
+
+    // Handle drop event on container
+    const queueContainer = document.getElementById('queueFilms');
+    queueContainer.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (draggedItem) {
+            // Get new order of film IDs
+            const newOrder = Array.from(this.querySelectorAll('.queue-film-item'))
+                .map(item => parseInt(item.dataset.filmTmdbId));
+            
+            // Send reorder request to backend
+            reorderQueueFilms(newOrder);
+        }
+    });
+
+    queueContainer.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.queue-film-item:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+async function reorderQueueFilms(filmOrder) {
+    const queueId = sessionStorage.getItem('currentQueueId');
+    
+    if (!queueId) {
+        console.error('No queue selected');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/queues/${queueId}/films/reorder`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                filmOrder: filmOrder
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        console.log('Films reordered successfully');
+    } catch (error) {
+        console.error('Error reordering films:', error);
+        // Reload queue to reset to server state
+        loadQueueFilms(queueId);
+    }
 }
