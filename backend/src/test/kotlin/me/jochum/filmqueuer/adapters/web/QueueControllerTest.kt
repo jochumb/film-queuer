@@ -1,17 +1,24 @@
 package me.jochum.filmqueuer.adapters.web
 
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import me.jochum.filmqueuer.domain.Department
+import me.jochum.filmqueuer.domain.Film
 import me.jochum.filmqueuer.domain.Person
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
+import me.jochum.filmqueuer.domain.QueueFilm
+import me.jochum.filmqueuer.domain.QueueFilmService
 import me.jochum.filmqueuer.domain.QueueRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,11 +30,13 @@ import kotlin.test.assertTrue
 class QueueControllerTest {
     private lateinit var queueRepository: QueueRepository
     private lateinit var personRepository: PersonRepository
+    private lateinit var queueFilmService: QueueFilmService
 
     @BeforeEach
     fun setup() {
         queueRepository = mockk()
         personRepository = mockk()
+        queueFilmService = mockk()
     }
 
     @Test
@@ -56,7 +65,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
             }
 
@@ -94,7 +103,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
             }
 
@@ -121,7 +130,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
             }
 
@@ -157,7 +166,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
             }
 
@@ -185,7 +194,7 @@ class QueueControllerTest {
 
             application {
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
             }
 
@@ -210,7 +219,7 @@ class QueueControllerTest {
 
             application {
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
                 }
             }
 
@@ -220,5 +229,176 @@ class QueueControllerTest {
             // Then
             assertEquals(HttpStatusCode.InternalServerError, response.status)
             assertTrue(response.bodyAsText().contains("Failed to fetch queues"))
+        }
+
+    @Test
+    fun `POST queue films should add film to queue successfully`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val film =
+                Film(
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = "1999-10-15",
+                )
+            val queueFilm = QueueFilm(queueId, film.tmdbId, LocalDateTime.now())
+
+            coEvery { queueFilmService.addFilmToQueue(queueId, film) } returns queueFilm
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/$queueId/films") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        """
+                        {
+                            "tmdbId": 550,
+                            "title": "Fight Club",
+                            "originalTitle": "Fight Club",
+                            "releaseDate": "1999-10-15"
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.Created, response.status)
+            assertTrue(response.bodyAsText().contains("Film added to queue successfully"))
+
+            coVerify { queueFilmService.addFilmToQueue(queueId, film) }
+        }
+
+    @Test
+    fun `POST queue films should return bad request for invalid queue ID`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/invalid-uuid/films") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"tmdbId": 550, "title": "Fight Club"}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid queue ID"))
+        }
+
+    @Test
+    fun `GET queue films should return films successfully`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val films =
+                listOf(
+                    Film(550, "Fight Club", "Fight Club", "1999-10-15"),
+                    Film(13, "Forrest Gump", null, "1994-07-06"),
+                )
+
+            coEvery { queueFilmService.getQueueFilms(queueId) } returns films
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/$queueId/films")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            assertTrue(responseBody.contains("Fight Club"))
+            assertTrue(responseBody.contains("Forrest Gump"))
+            assertTrue(responseBody.contains("550"))
+            assertTrue(responseBody.contains("13"))
+
+            coVerify { queueFilmService.getQueueFilms(queueId) }
+        }
+
+    @Test
+    fun `GET queue films should return empty list when no films in queue`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            coEvery { queueFilmService.getQueueFilms(queueId) } returns emptyList()
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/$queueId/films")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            assertTrue(responseBody.contains("\"films\":[]"))
+
+            coVerify { queueFilmService.getQueueFilms(queueId) }
+        }
+
+    @Test
+    fun `GET queue films should return bad request for invalid queue ID`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/invalid-uuid/films")
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid queue ID"))
+        }
+
+    @Test
+    fun `POST queue films should handle service errors`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            coEvery { queueFilmService.addFilmToQueue(any(), any()) } throws RuntimeException("Database error")
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/$queueId/films") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"tmdbId": 550, "title": "Fight Club"}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            assertTrue(response.bodyAsText().contains("Failed to add film to queue"))
         }
 }

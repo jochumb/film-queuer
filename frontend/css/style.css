@@ -422,3 +422,55 @@ main {
 .film-poster {
     position: relative;
 }
+
+.queue-film-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    margin-bottom: 0.5rem;
+    transition: box-shadow 0.3s;
+}
+
+.queue-film-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.queue-film-info h4 {
+    margin: 0 0 0.25rem 0;
+    color: #2c3e50;
+    font-size: 1.1em;
+}
+
+.queue-film-info .original-title {
+    font-style: italic;
+    color: #7f8c8d;
+    margin: 0 0 0.25rem 0;
+    font-size: 0.9em;
+}
+
+.queue-film-info .release-date {
+    color: #95a5a6;
+    margin: 0;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.remove-film-btn {
+    padding: 8px 16px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s;
+    flex-shrink: 0;
+}
+
+.remove-film-btn:hover {
+    background-color: #c0392b;
+}

@@ -296,17 +296,102 @@ function displayFilteredFilms(thresholdPercentage) {
     }
 }
 
-function loadQueueFilms(queueId) {
+async function loadQueueFilms(queueId) {
     const queueFilmsContainer = document.getElementById('queueFilms');
     
-    // TODO: Load actual films from queue API
-    queueFilmsContainer.innerHTML = '<p>Queue films functionality coming soon</p>';
+    try {
+        queueFilmsContainer.innerHTML = '<p>Loading queue films...</p>';
+        
+        const response = await fetch(`${API_BASE}/queues/${queueId}/films`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.films && data.films.length > 0) {
+            queueFilmsContainer.innerHTML = `
+                <div class="queue-films-list">
+                    ${data.films.map(film => `
+                        <div class="queue-film-item">
+                            <div class="queue-film-info">
+                                <h4>${film.title}</h4>
+                                ${film.originalTitle && film.originalTitle !== film.title ? 
+                                    `<p class="original-title">(${film.originalTitle})</p>` : ''
+                                }
+                                ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
+                            </div>
+                            <button class="remove-film-btn" onclick="removeFilmFromQueue('${film.tmdbId}', '${film.title.replace(/'/g, "\\\'")}')">
+                                Remove
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            queueFilmsContainer.innerHTML = '<p>No films in this queue yet.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading queue films:', error);
+        queueFilmsContainer.innerHTML = '<p>Failed to load queue films. Please try again.</p>';
+    }
 }
 
-function addFilmToQueue(filmId, filmTitle) {
-    // TODO: Implement adding film to queue
-    alert(`Adding "${filmTitle}" to queue (Film ID: ${filmId})`);
-    console.log('Add film to queue:', { filmId, filmTitle });
+async function addFilmToQueue(filmId, filmTitle) {
+    const queueId = sessionStorage.getItem('currentQueueId');
+    
+    if (!queueId) {
+        alert('Error: No queue selected');
+        return;
+    }
+
+    try {
+        // Get film details from the displayed film data
+        const filmCard = document.querySelector(`[data-film-id="${filmId}"]`);
+        if (!filmCard) {
+            alert('Error: Film details not found');
+            return;
+        }
+
+        // Extract film data from the UI (we have this data already)
+        const film = allFilms.find(f => f.id == filmId);
+        if (!film) {
+            alert('Error: Film data not found');
+            return;
+        }
+
+        const response = await fetch(`${API_BASE}/queues/${queueId}/films`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tmdbId: film.id,
+                title: film.title,
+                originalTitle: film.originalTitle,
+                releaseDate: film.releaseDate
+            })
+        });
+
+        if (response.ok) {
+            alert(`"${filmTitle}" has been added to the queue!`);
+            // Refresh the queue films list
+            loadQueueFilms(queueId);
+        } else {
+            const errorText = await response.text();
+            alert(`Failed to add film to queue: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('Error adding film to queue:', error);
+        alert('Failed to add film to queue. Please try again.');
+    }
+}
+
+async function removeFilmFromQueue(filmId, filmTitle) {
+    // TODO: Implement removing film from queue
+    alert(`Removing "${filmTitle}" from queue (Film ID: ${filmId})`);
+    console.log('Remove film from queue:', { filmId, filmTitle });
 }
 
 function showMainPage() {

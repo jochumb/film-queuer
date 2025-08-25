@@ -35,7 +35,7 @@ object DatabaseConfig {
 
                     // Test the connection and create schema
                     transaction {
-                        SchemaUtils.create(PersonTable, QueueTable)
+                        SchemaUtils.create(PersonTable, QueueTable, FilmTable, QueueFilmTable)
                     }
 
                     println("Successfully connected to database and created schema")
