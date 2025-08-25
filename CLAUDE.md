@@ -186,3 +186,4 @@ Located in `src/main/resources/db/migration/`:
 - **Drag & Drop**: Frontend supports manual reordering with visual feedback
 - **Future Enhancements**: Respect hexagonal architecture boundaries
 - **Code Style**: Run `./gradlew :backend:format` before committing
+- Module-based split in frontend.
