@@ -5,6 +5,7 @@ import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
@@ -115,6 +116,35 @@ fun Route.configureQueueRoutes(
                 call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to fetch queue films: ${e.message}")
+            }
+        }
+
+        delete("/{queueId}/films/{filmTmdbId}") {
+            try {
+                val queueIdString = call.parameters["queueId"]
+                val filmTmdbIdString = call.parameters["filmTmdbId"]
+
+                if (queueIdString == null || filmTmdbIdString == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue ID and Film TMDB ID are required")
+                    return@delete
+                }
+
+                val queueId = UUID.fromString(queueIdString)
+                val filmTmdbId = filmTmdbIdString.toInt()
+
+                val removed = queueFilmService.removeFilmFromQueue(queueId, filmTmdbId)
+
+                if (removed) {
+                    call.respond(HttpStatusCode.OK, "Film removed from queue successfully")
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Film not found in queue")
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID or film TMDB ID: ${e.message}")
+            } catch (e: NumberFormatException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid film TMDB ID format: ${e.message}")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to remove film from queue: ${e.message}")
             }
         }
     }

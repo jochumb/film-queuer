@@ -1,5 +1,6 @@
 package me.jochum.filmqueuer.adapters.web
 
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -400,5 +401,125 @@ class QueueControllerTest {
             // Then
             assertEquals(HttpStatusCode.InternalServerError, response.status)
             assertTrue(response.bodyAsText().contains("Failed to add film to queue"))
+        }
+
+    @Test
+    fun `DELETE queue films should remove film successfully`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmTmdbId = 550
+
+            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) } returns true
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId/films/$filmTmdbId")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.bodyAsText().contains("Film removed from queue successfully"))
+
+            coVerify { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) }
+        }
+
+    @Test
+    fun `DELETE queue films should return not found when film not in queue`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmTmdbId = 550
+
+            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) } returns false
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId/films/$filmTmdbId")
+
+            // Then
+            assertEquals(HttpStatusCode.NotFound, response.status)
+            assertTrue(response.bodyAsText().contains("Film not found in queue"))
+
+            coVerify { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) }
+        }
+
+    @Test
+    fun `DELETE queue films should return bad request for invalid queue ID`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/invalid-uuid/films/550")
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid queue ID"))
+        }
+
+    @Test
+    fun `DELETE queue films should return bad request for invalid film TMDB ID`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId/films/not-a-number")
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            val responseBody = response.bodyAsText()
+            assertTrue(
+                responseBody.contains("Invalid film TMDB ID format") ||
+                    responseBody.contains("NumberFormatException") ||
+                    responseBody.contains("For input string"),
+            )
+        }
+
+    @Test
+    fun `DELETE queue films should handle service errors`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val filmTmdbId = 550
+
+            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) } throws RuntimeException("Database error")
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId/films/$filmTmdbId")
+
+            // Then
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            assertTrue(response.bodyAsText().contains("Failed to remove film from queue"))
         }
 }

@@ -389,9 +389,37 @@ async function addFilmToQueue(filmId, filmTitle) {
 }
 
 async function removeFilmFromQueue(filmId, filmTitle) {
-    // TODO: Implement removing film from queue
-    alert(`Removing "${filmTitle}" from queue (Film ID: ${filmId})`);
-    console.log('Remove film from queue:', { filmId, filmTitle });
+    const queueId = sessionStorage.getItem('currentQueueId');
+    
+    if (!queueId) {
+        alert('Error: No queue selected');
+        return;
+    }
+
+    // Confirm removal
+    if (!confirm(`Are you sure you want to remove "${filmTitle}" from the queue?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/queues/${queueId}/films/${filmId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert(`"${filmTitle}" has been removed from the queue!`);
+            // Refresh the queue films list
+            loadQueueFilms(queueId);
+        } else if (response.status === 404) {
+            alert('Film not found in queue.');
+        } else {
+            const errorText = await response.text();
+            alert(`Failed to remove film from queue: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('Error removing film from queue:', error);
+        alert('Failed to remove film from queue. Please try again.');
+    }
 }
 
 function showMainPage() {
