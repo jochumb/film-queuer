@@ -163,28 +163,40 @@ function showFilmManagementPage() {
     
     document.querySelector('.container').innerHTML = `
         <header>
-            <h1>${personName}'s Films</h1>
-            <p class="queue-subtitle">${translateDepartmentToRole(department)} • Queue ID: ${queueId.substring(0, 8)}...</p>
+            <div class="header-content">
+                <h1>${personName}'s Films</h1>
+                <p class="queue-subtitle">${translateDepartmentToRole(department)} • Queue ID: ${queueId.substring(0, 8)}...</p>
+            </div>
+            <button class="back-button" onclick="showMainPage()">← Back to Queue List</button>
         </header>
-        <main>
-            <div class="film-management-section">
-                <button class="back-button" onclick="showMainPage()">← Back to Queue List</button>
-                
+        <main class="two-column-layout">
+            <div class="left-column">
                 <div class="person-films-section">
-                    <h2>Films by ${personName}</h2>
-                    <p>Select films to add to the queue:</p>
-                    <div class="vote-filter-section">
-                        <label for="voteFilter">Minimum vote threshold: <span id="votePercentage">10</span>% of average</label>
-                        <input type="range" id="voteFilter" min="0" max="100" value="10" class="vote-slider">
-                        <p class="filter-info" id="filterInfo">Loading...</p>
+                    <div class="filmography-header">
+                        <div class="filmography-title">
+                            <h2>Browse Filmography</h2>
+                            <p>Select films to add to your queue:</p>
+                        </div>
+                        <div class="vote-filter-inline">
+                            <label for="voteFilter">Min votes: <span id="votePercentage">10</span>%</label>
+                            <input type="range" id="voteFilter" min="0" max="100" value="10" class="vote-slider-inline">
+                            <p class="filter-info-inline" id="filterInfo">Loading...</p>
+                        </div>
                     </div>
                     <div id="personFilms" class="person-films-list">
                         <p>Loading films...</p>
                     </div>
                 </div>
-                
+            </div>
+            
+            <div class="right-column">
                 <div class="queue-films-section">
-                    <h2>Films in Queue</h2>
+                    <div class="queue-header-sticky">
+                        <h2>My Queue</h2>
+                        <div class="queue-stats" id="queueStats">
+                            <span class="film-count">0 films</span>
+                        </div>
+                    </div>
                     <div id="queueFilms" class="queue-films-list">
                         <p>Loading queue films...</p>
                     </div>
@@ -200,6 +212,7 @@ function showFilmManagementPage() {
 
 let allFilms = [];
 let averageVoteCount = 0;
+let queuedFilmIds = new Set();
 
 async function loadPersonFilms(personTmdbId, department) {
     const personFilmsContainer = document.getElementById('personFilms');
@@ -216,8 +229,14 @@ async function loadPersonFilms(personTmdbId, department) {
         const data = await response.json();
         
         if (data.films && data.films.length > 0) {
-            // Store all films globally for filtering
-            allFilms = data.films;
+            // Store all films globally for filtering, sorted by release date (oldest first)
+            allFilms = data.films.sort((a, b) => {
+                // Handle missing release dates by putting them at the end
+                if (!a.releaseDate && !b.releaseDate) return 0;
+                if (!a.releaseDate) return 1;
+                if (!b.releaseDate) return -1;
+                return a.releaseDate.localeCompare(b.releaseDate);
+            });
             
             // Calculate average vote count (excluding 0 vote films)
             const filmsWithVotes = allFilms.filter(film => film.voteCount > 0);
@@ -267,28 +286,32 @@ function displayFilteredFilms(thresholdPercentage) {
     if (filteredFilms.length > 0) {
         personFilmsContainer.innerHTML = `
             <div class="films-grid">
-                ${filteredFilms.map(film => `
-                    <div class="film-card" data-film-id="${film.id}">
-                        <div class="film-poster">
-                            ${film.posterPath ? 
-                                `<img src="${film.posterPath}" alt="${film.title}">` : 
-                                '<div class="no-poster">🎬</div>'
-                            }
+                ${filteredFilms.map(film => {
+                    const isInQueue = queuedFilmIds.has(film.id);
+                    return `
+                        <div class="film-card ${isInQueue ? 'in-queue' : ''}" data-film-id="${film.id}">
+                            <div class="film-poster">
+                                ${film.posterPath ? 
+                                    `<img src="${film.posterPath}" alt="${film.title}">` : 
+                                    '<div class="no-poster">🎬</div>'
+                                }
+                                ${isInQueue ? '<div class="queue-indicator">✓</div>' : ''}
+                            </div>
+                            <div class="film-info">
+                                <h4>${film.title}</h4>
+                                ${film.originalTitle && film.originalTitle !== film.title ? 
+                                    `<p class="original-title">(${film.originalTitle})</p>` : ''
+                                }
+                                ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
+                                ${film.role ? `<p class="role">as ${film.role}</p>` : ''}
+                                ${film.voteAverage > 0 ? `<p class="rating">★ ${film.voteAverage.toFixed(1)} (${film.voteCount} votes)</p>` : ''}
+                                <button class="add-film-btn ${isInQueue ? 'in-queue' : ''}" onclick="addFilmToQueue('${film.id}', '${film.title.replace(/'/g, "\\\'")}'))" ${isInQueue ? 'disabled' : ''}>
+                                    ${isInQueue ? 'In Queue' : 'Add to Queue'}
+                                </button>
+                            </div>
                         </div>
-                        <div class="film-info">
-                            <h4>${film.title}</h4>
-                            ${film.originalTitle && film.originalTitle !== film.title ? 
-                                `<p class="original-title">(${film.originalTitle})</p>` : ''
-                            }
-                            ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
-                            ${film.role ? `<p class="role">as ${film.role}</p>` : ''}
-                            ${film.voteAverage > 0 ? `<p class="rating">★ ${film.voteAverage.toFixed(1)} (${film.voteCount} votes)</p>` : ''}
-                            <button class="add-film-btn" onclick="addFilmToQueue('${film.id}', '${film.title.replace(/'/g, "\\\'")}')">
-                                Add to Queue
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     } else {
@@ -311,26 +334,38 @@ async function loadQueueFilms(queueId) {
         const data = await response.json();
         
         if (data.films && data.films.length > 0) {
+            // Update queued films set
+            queuedFilmIds.clear();
+            data.films.forEach(film => queuedFilmIds.add(film.tmdbId));
+            
             queueFilmsContainer.innerHTML = `
-                <div class="queue-films-list">
-                    ${data.films.map(film => `
-                        <div class="queue-film-item">
-                            <div class="queue-film-info">
-                                <h4>${film.title}</h4>
-                                ${film.originalTitle && film.originalTitle !== film.title ? 
-                                    `<p class="original-title">(${film.originalTitle})</p>` : ''
-                                }
-                                ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
-                            </div>
-                            <button class="remove-film-btn" onclick="removeFilmFromQueue('${film.tmdbId}', '${film.title.replace(/'/g, "\\\'")}')">
-                                Remove
-                            </button>
+                ${data.films.map(film => `
+                    <div class="queue-film-item">
+                        <div class="queue-film-info">
+                            <h4>${film.title}</h4>
+                            ${film.originalTitle && film.originalTitle !== film.title ? 
+                                `<p class="original-title">(${film.originalTitle})</p>` : ''
+                            }
+                            ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
                         </div>
-                    `).join('')}
-                </div>
+                        <button class="remove-film-btn" onclick="removeFilmFromQueue('${film.tmdbId}', '${film.title.replace(/'/g, "\\\'")}')">
+                            Remove
+                        </button>
+                    </div>
+                `).join('')}
             `;
+            updateQueueStats(data.films.length);
         } else {
-            queueFilmsContainer.innerHTML = '<p>No films in this queue yet.</p>';
+            // Clear queued films set when queue is empty
+            queuedFilmIds.clear();
+            queueFilmsContainer.innerHTML = '<div class="empty-queue"><p>No films in your queue yet.</p><p class="empty-queue-subtitle">Browse the filmography and add some films!</p></div>';
+            updateQueueStats(0);
+        }
+        
+        // Refresh filmography display to update queue indicators
+        if (allFilms.length > 0) {
+            const currentThreshold = document.getElementById('voteFilter')?.value || 10;
+            displayFilteredFilms(parseInt(currentThreshold));
         }
     } catch (error) {
         console.error('Error loading queue films:', error);
@@ -344,6 +379,11 @@ async function addFilmToQueue(filmId, filmTitle) {
     if (!queueId) {
         alert('Error: No queue selected');
         return;
+    }
+
+    // Check if film is already in queue
+    if (queuedFilmIds.has(filmId)) {
+        return; // Film already in queue, do nothing
     }
 
     try {
@@ -419,6 +459,14 @@ async function removeFilmFromQueue(filmId, filmTitle) {
     } catch (error) {
         console.error('Error removing film from queue:', error);
         alert('Failed to remove film from queue. Please try again.');
+    }
+}
+
+function updateQueueStats(filmCount) {
+    const queueStats = document.getElementById('queueStats');
+    if (queueStats) {
+        const filmText = filmCount === 1 ? 'film' : 'films';
+        queueStats.innerHTML = `<span class="film-count">${filmCount} ${filmText}</span>`;
     }
 }
 
