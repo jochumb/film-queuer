@@ -9,13 +9,23 @@ global.document = dom.window.document;
 global.window = dom.window;
 
 // Mock sessionStorage
-const mockSessionStorage = {
-    store: {},
-    getItem: jest.fn((key) => mockSessionStorage.store[key] || null),
-    setItem: jest.fn((key, value) => { mockSessionStorage.store[key] = value; }),
-    clear: jest.fn(() => { mockSessionStorage.store = {}; })
-};
-global.sessionStorage = mockSessionStorage;
+Object.defineProperty(window, 'sessionStorage', {
+    value: {
+        store: {},
+        getItem: jest.fn(function(key) { 
+            return this.store[key] || null; 
+        }),
+        setItem: jest.fn(function(key, value) { 
+            this.store[key] = value; 
+        }),
+        clear: jest.fn(function() { 
+            this.store = {}; 
+        })
+    },
+    writable: true
+});
+
+const mockSessionStorage = window.sessionStorage;
 
 // Mock API
 const mockApi = {
@@ -33,7 +43,7 @@ jest.mock('../queue.js', () => ({
     loadQueues: jest.fn()
 }));
 
-import { setupQueueDragAndDrop, setupQueueListDragAndDrop } from '../dragdrop.js';
+const { setupQueueDragAndDrop, setupQueueListDragAndDrop } = require('../dragdrop.js');
 
 describe('Queue Film Drag and Drop', () => {
     beforeEach(() => {
@@ -44,6 +54,7 @@ describe('Queue Film Drag and Drop', () => {
         
         // Set up mock session storage
         mockSessionStorage.store = { 'currentQueueId': 'test-queue-id' };
+        mockSessionStorage.getItem.mockImplementation((key) => mockSessionStorage.store[key] || null);
     });
 
     test('should setup drag and drop listeners for queue films', () => {
@@ -116,9 +127,9 @@ describe('Queue Film Drag and Drop', () => {
         // Given
         document.body.innerHTML = `
             <div id="queueFilms">
-                <div class="queue-film-item" data-film-tmdb-id="1">Film 1</div>
-                <div class="queue-film-item" data-film-tmdb-id="2">Film 2</div>
-                <div class="queue-film-item" data-film-tmdb-id="3">Film 3</div>
+                <div class="queue-film-item" draggable="true" data-film-tmdb-id="1">Film 1</div>
+                <div class="queue-film-item" draggable="true" data-film-tmdb-id="2">Film 2</div>
+                <div class="queue-film-item" draggable="true" data-film-tmdb-id="3">Film 3</div>
             </div>
         `;
         setupQueueDragAndDrop();
@@ -126,6 +137,17 @@ describe('Queue Film Drag and Drop', () => {
         mockApi.reorderQueueFilms.mockResolvedValue({ ok: true });
         
         const container = document.getElementById('queueFilms');
+        const firstItem = container.querySelector('.queue-film-item');
+        
+        // First simulate dragstart to set up drag state
+        const dragStartEvent = new Event('dragstart');
+        Object.defineProperty(dragStartEvent, 'dataTransfer', {
+            value: { effectAllowed: null },
+            writable: false
+        });
+        firstItem.dispatchEvent(dragStartEvent);
+        
+        // Then simulate drop
         const dropEvent = new Event('drop');
         Object.defineProperty(dropEvent, 'preventDefault', {
             value: jest.fn(),
@@ -148,7 +170,7 @@ describe('Queue Film Drag and Drop', () => {
         // Given
         document.body.innerHTML = `
             <div id="queueFilms">
-                <div class="queue-film-item" data-film-tmdb-id="1">Film 1</div>
+                <div class="queue-film-item" draggable="true" data-film-tmdb-id="1">Film 1</div>
             </div>
         `;
         setupQueueDragAndDrop();
@@ -157,6 +179,16 @@ describe('Queue Film Drag and Drop', () => {
         mockApi.reorderQueueFilms.mockRejectedValue(new Error('Network error'));
         
         const container = document.getElementById('queueFilms');
+        const firstItem = container.querySelector('.queue-film-item');
+        
+        // First simulate dragstart to set up drag state
+        const dragStartEvent = new Event('dragstart');
+        Object.defineProperty(dragStartEvent, 'dataTransfer', {
+            value: { effectAllowed: null },
+            writable: false
+        });
+        firstItem.dispatchEvent(dragStartEvent);
+        
         const dropEvent = new Event('drop');
         Object.defineProperty(dropEvent, 'preventDefault', {
             value: jest.fn(),
@@ -231,9 +263,9 @@ describe('Queue List Drag and Drop', () => {
         // Given
         document.body.innerHTML = `
             <div id="queuesList">
-                <div class="queue-item" data-queue-id="queue-1">Queue 1</div>
-                <div class="queue-item" data-queue-id="queue-2">Queue 2</div>
-                <div class="queue-item" data-queue-id="queue-3">Queue 3</div>
+                <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
+                <div class="queue-item" draggable="true" data-queue-id="queue-2">Queue 2</div>
+                <div class="queue-item" draggable="true" data-queue-id="queue-3">Queue 3</div>
             </div>
         `;
         setupQueueListDragAndDrop();
@@ -241,6 +273,16 @@ describe('Queue List Drag and Drop', () => {
         mockApi.reorderQueues.mockResolvedValue({ ok: true });
         
         const container = document.getElementById('queuesList');
+        const firstItem = container.querySelector('.queue-item');
+        
+        // First simulate dragstart to set up drag state
+        const dragStartEvent = new Event('dragstart');
+        Object.defineProperty(dragStartEvent, 'dataTransfer', {
+            value: { effectAllowed: null },
+            writable: false
+        });
+        firstItem.dispatchEvent(dragStartEvent);
+        
         const dropEvent = new Event('drop');
         Object.defineProperty(dropEvent, 'preventDefault', {
             value: jest.fn(),
@@ -270,7 +312,7 @@ describe('Queue List Drag and Drop', () => {
         // Given
         document.body.innerHTML = `
             <div id="queuesList">
-                <div class="queue-item" data-queue-id="queue-1">Queue 1</div>
+                <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
             </div>
         `;
         setupQueueListDragAndDrop();
@@ -279,6 +321,16 @@ describe('Queue List Drag and Drop', () => {
         mockApi.reorderQueues.mockRejectedValue(new Error('Server error'));
         
         const container = document.getElementById('queuesList');
+        const firstItem = container.querySelector('.queue-item');
+        
+        // First simulate dragstart to set up drag state
+        const dragStartEvent = new Event('dragstart');
+        Object.defineProperty(dragStartEvent, 'dataTransfer', {
+            value: { effectAllowed: null },
+            writable: false
+        });
+        firstItem.dispatchEvent(dragStartEvent);
+        
         const dropEvent = new Event('drop');
         Object.defineProperty(dropEvent, 'preventDefault', {
             value: jest.fn(),

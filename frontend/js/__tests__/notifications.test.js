@@ -9,7 +9,7 @@ global.document = dom.window.document;
 global.window = dom.window;
 
 // Import the module to test
-import { notifications } from '../notifications.js';
+const { notifications } = require('../notifications.js');
 
 describe('NotificationSystem', () => {
     beforeEach(() => {
@@ -95,7 +95,7 @@ describe('NotificationSystem', () => {
             expect(container.children.length).toBe(3);
         });
 
-        test('should remove toast when close button clicked', () => {
+        test('should remove toast when close button clicked', (done) => {
             // Given
             const toast = notifications.success('Test message');
             const closeButton = toast.querySelector('.toast-close');
@@ -107,12 +107,13 @@ describe('NotificationSystem', () => {
             setTimeout(() => {
                 const container = document.getElementById('toast-container');
                 expect(container.children.length).toBe(0);
+                done();
             }, 400); // Wait for animation
         });
 
         test('should auto-dismiss success toasts', (done) => {
             // Given
-            const toast = notifications.success('Test message', 100); // 100ms duration
+            notifications.success('Test message', 100); // 100ms duration
 
             // Then
             expect(document.getElementById('toast-container').children.length).toBe(1);
@@ -120,7 +121,7 @@ describe('NotificationSystem', () => {
             setTimeout(() => {
                 expect(document.getElementById('toast-container').children.length).toBe(0);
                 done();
-            }, 500);
+            }, 500); // 100ms duration + 300ms removal animation + buffer
         });
 
         test('should NOT auto-dismiss error toasts', (done) => {
