@@ -9,3 +9,8 @@ data class QueueDto(
     val createdAt: String,
     val person: SavedPersonDto? = null,
 )
+
+@Serializable
+data class ReorderQueuesDto(
+    val queueOrder: List<String>,
+)

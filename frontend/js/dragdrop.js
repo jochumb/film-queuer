@@ -86,3 +86,85 @@ async function reorderQueueFilms(filmOrder) {
         loadQueueFilms(queueId);
     }
 }
+
+export function setupQueueListDragAndDrop() {
+    const queueItems = document.querySelectorAll('.queue-item');
+    let draggedItem = null;
+
+    queueItems.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            draggedItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            draggedItem = null;
+        });
+
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const afterElement = getDragAfterElementQueue(this.parentNode, e.clientY);
+            if (afterElement == null) {
+                this.parentNode.appendChild(draggedItem);
+            } else {
+                this.parentNode.insertBefore(draggedItem, afterElement);
+            }
+        });
+    });
+
+    // Handle drop event on container
+    const queueListContainer = document.getElementById('queuesList');
+    if (queueListContainer) {
+        queueListContainer.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (draggedItem) {
+                // Get new order of queue IDs
+                const newOrder = Array.from(this.querySelectorAll('.queue-item'))
+                    .map(item => item.dataset.queueId);
+                
+                // Send reorder request to backend
+                reorderQueues(newOrder);
+            }
+        });
+
+        queueListContainer.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+    }
+}
+
+function getDragAfterElementQueue(container, y) {
+    const draggableElements = [...container.querySelectorAll('.queue-item:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+async function reorderQueues(queueOrder) {
+    try {
+        const response = await api.reorderQueues(queueOrder);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        console.log('Queues reordered successfully');
+    } catch (error) {
+        console.error('Error reordering queues:', error);
+        // Reload queues to reset to server state
+        const { loadQueues } = await import('./queue.js');
+        loadQueues();
+    }
+}

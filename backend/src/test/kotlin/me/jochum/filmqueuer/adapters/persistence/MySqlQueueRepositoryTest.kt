@@ -107,4 +107,108 @@ class MySqlQueueRepositoryTest {
             // Then
             assertTrue(!deleted)
         }
+
+    @Test
+    fun `should reorder queues successfully`() =
+        runBlocking {
+            // Given
+            val queue1 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 123)
+            val queue2 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 456)
+            val queue3 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 789)
+
+            repository.save(queue1)
+            repository.save(queue2)
+            repository.save(queue3)
+
+            // When - reorder to: queue3, queue1, queue2
+            val reorderSuccess = repository.reorderQueues(listOf(queue3.id, queue1.id, queue2.id))
+            val reorderedQueues = repository.findAll()
+
+            // Then
+            assertTrue(reorderSuccess)
+            assertEquals(3, reorderedQueues.size)
+            assertEquals(queue3.id, reorderedQueues[0].id)
+            assertEquals(queue1.id, reorderedQueues[1].id)
+            assertEquals(queue2.id, reorderedQueues[2].id)
+        }
+
+    @Test
+    fun `should handle empty queue list for reordering`() =
+        runBlocking {
+            // Given - empty list
+            val emptyList = emptyList<UUID>()
+
+            // When
+            val reorderSuccess = repository.reorderQueues(emptyList)
+
+            // Then
+            assertTrue(reorderSuccess)
+        }
+
+    @Test
+    fun `should handle partial queue list for reordering`() =
+        runBlocking {
+            // Given
+            val queue1 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 123)
+            val queue2 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 456)
+            val queue3 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 789)
+
+            repository.save(queue1)
+            repository.save(queue2)
+            repository.save(queue3)
+
+            // When - only reorder queue2 and queue3, swapping their positions
+            val reorderSuccess = repository.reorderQueues(listOf(queue3.id, queue2.id))
+            val allQueues = repository.findAll()
+
+            // Then
+            assertTrue(reorderSuccess)
+            assertEquals(3, allQueues.size)
+            // queue3 gets sort_order 0, queue2 gets sort_order 1, queue1 keeps sort_order 2
+            assertEquals(queue3.id, allQueues[0].id)
+            assertEquals(queue2.id, allQueues[1].id)
+            assertEquals(queue1.id, allQueues[2].id)
+        }
+
+    @Test
+    fun `should handle non-existent queue IDs in reorder list`() =
+        runBlocking {
+            // Given
+            val queue1 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 123)
+            val nonExistentId = UUID.randomUUID()
+
+            repository.save(queue1)
+
+            // When - try to reorder with non-existent ID
+            val reorderSuccess = repository.reorderQueues(listOf(nonExistentId, queue1.id))
+
+            // Then - should still succeed (updates what exists, ignores what doesn't)
+            assertTrue(reorderSuccess)
+            val allQueues = repository.findAll()
+            assertEquals(1, allQueues.size)
+            assertEquals(queue1.id, allQueues[0].id)
+        }
+
+    @Test
+    fun `should maintain sort order after adding new queues`() =
+        runBlocking {
+            // Given - save queues in order
+            val queue1 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 123)
+            val queue2 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 456)
+
+            repository.save(queue1)
+            repository.save(queue2)
+
+            // When - add a third queue
+            val queue3 = PersonQueue(id = UUID.randomUUID(), personTmdbId = 789)
+            repository.save(queue3)
+
+            val allQueues = repository.findAll()
+
+            // Then - should be in creation order (sort_order 0, 1, 2)
+            assertEquals(3, allQueues.size)
+            assertEquals(queue1.id, allQueues[0].id)
+            assertEquals(queue2.id, allQueues[1].id)
+            assertEquals(queue3.id, allQueues[2].id)
+        }
 }

@@ -202,5 +202,24 @@ fun Route.configureQueueRoutes(
                 call.respond(HttpStatusCode.InternalServerError, "Failed to reorder films: ${e.message}")
             }
         }
+
+        put("/reorder") {
+            try {
+                val reorderRequest = call.receive<ReorderQueuesDto>()
+                val queueIds = reorderRequest.queueOrder.map { UUID.fromString(it) }
+
+                val success = queueRepository.reorderQueues(queueIds)
+
+                if (success) {
+                    call.respond(HttpStatusCode.OK, "Queues reordered successfully")
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, "Failed to reorder queues")
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID format: ${e.message}")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to reorder queues: ${e.message}")
+            }
+        }
     }
 }

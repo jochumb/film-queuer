@@ -5,13 +5,16 @@ export function displayQueues(queues) {
     if (queues.length > 0) {
         savedPersonsContainer.innerHTML = `
             <h3>Queue</h3>
-            <div class="saved-persons-list">
+            <div class="saved-persons-list" id="queuesList">
                 ${queues.map(queue => `
-                    <div class="saved-person-item clickable" onclick="navigateToQueue('${queue.id}')">
-                        ${queue.person ? `
-                            <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
-                        ` : 'Unknown item'}
-                        <span class="edit-indicator">→</span>
+                    <div class="saved-person-item queue-item clickable" draggable="true" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
+                        <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
+                        <div class="queue-info">
+                            ${queue.person ? `
+                                <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
+                            ` : 'Unknown item'}
+                            <span class="edit-indicator">→</span>
+                        </div>
                     </div>
                 `).join('')}
             </div>

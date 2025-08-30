@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.update
 import java.util.UUID
 
 class MySqlQueueRepository : QueueRepository {
@@ -28,11 +29,15 @@ class MySqlQueueRepository : QueueRepository {
         newSuspendedTransaction {
             when (queue) {
                 is PersonQueue -> {
+                    // Get the next sort order (max + 1)
+                    val nextSortOrder = QueueTable.selectAll().maxOfOrNull { it[QueueTable.sortOrder] }?.plus(1) ?: 0
+
                     QueueTable.insert {
                         it[id] = queue.id
                         it[type] = "PERSON"
                         it[personTmdbId] = queue.personTmdbId
                         it[createdAt] = queue.createdAt
+                        it[sortOrder] = nextSortOrder
                     }
                     queue
                 }
@@ -49,11 +54,27 @@ class MySqlQueueRepository : QueueRepository {
 
     override suspend fun findAll(): List<Queue> =
         newSuspendedTransaction {
-            QueueTable.selectAll().map(::mapRowToQueue)
+            QueueTable.selectAll().orderBy(QueueTable.sortOrder).map(::mapRowToQueue)
         }
 
     override suspend fun deleteById(id: UUID): Boolean =
         newSuspendedTransaction {
             QueueTable.deleteWhere { QueueTable.id eq id } > 0
+        }
+
+    override suspend fun reorderQueues(queueIds: List<UUID>): Boolean =
+        newSuspendedTransaction {
+            val allIds = QueueTable.selectAll().map { it[QueueTable.id] }
+
+            try {
+                (queueIds + (allIds - queueIds.toSet())).forEachIndexed { index, queueId ->
+                    QueueTable.update({ QueueTable.id eq queueId }) {
+                        it[sortOrder] = index
+                    }
+                }
+                true
+            } catch (e: Exception) {
+                false
+            }
         }
 }

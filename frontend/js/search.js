@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { notifications } from './notifications.js';
 
 const DEPARTMENT_ROLES = {
     'ACTING': 'Actor',
@@ -76,16 +77,27 @@ export async function selectPerson(tmdbId, name, department) {
         const response = await api.selectPerson(tmdbId, name, department);
 
         if (response.ok) {
-            alert(`${name} has been saved successfully!`);
+            notifications.success(`${name} has been saved successfully!`);
+            
+            // Clear search results and input
+            const searchResults = document.getElementById('searchResults');
+            const searchInput = document.getElementById('personSearch');
+            if (searchResults) {
+                searchResults.innerHTML = '';
+            }
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            
             // Import and call loadQueues dynamically to avoid circular dependency
             const { loadQueues } = await import('./queue.js');
             loadQueues();
         } else {
-            alert('Failed to save person. Please try again.');
+            notifications.error('Failed to save person. Please try again.');
         }
     } catch (error) {
         console.error('Error saving person:', error);
-        alert('Failed to save person. Please try again.');
+        notifications.error('Failed to save person. Please try again.');
     }
 }
 

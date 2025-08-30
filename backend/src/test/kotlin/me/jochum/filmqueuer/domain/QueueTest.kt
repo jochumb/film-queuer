@@ -24,7 +24,6 @@ class QueueTest {
             )
 
         // Then
-        assertTrue(personQueue is Queue)
         assertEquals(id, personQueue.id)
         assertEquals(personTmdbId, personQueue.personTmdbId)
         assertEquals(createdAt, personQueue.createdAt)

@@ -1,7 +1,8 @@
 import { api } from './api.js';
 import { displayQueues, showFilmManagementPage, displayFilteredFilms, displayQueueFilms, updateQueueStats } from './ui.js';
-import { setupQueueDragAndDrop } from './dragdrop.js';
+import { setupQueueDragAndDrop, setupQueueListDragAndDrop } from './dragdrop.js';
 import { navigateToHome } from './navigation.js';
+import { notifications } from './notifications.js';
 
 let allFilms = [];
 let averageVoteCount = 0;
@@ -11,6 +12,11 @@ export async function loadQueues() {
     try {
         const queues = await api.getQueues();
         displayQueues(queues);
+        
+        // Setup drag-and-drop for queue reordering after displaying
+        if (queues.length > 0) {
+            setupQueueListDragAndDrop();
+        }
     } catch (error) {
         console.error('Error loading queues:', error);
     }
@@ -31,7 +37,7 @@ export async function showQueuePage(queueId) {
         showFilmManagementPageInternal();
     } catch (error) {
         console.error('Error loading queue:', error);
-        alert('Queue not found or error loading queue');
+        notifications.error('Queue not found or error loading queue');
         navigateToHome();
     }
 }
@@ -149,7 +155,7 @@ export async function addFilmToQueue(filmId, filmTitle) {
     const queueId = sessionStorage.getItem('currentQueueId');
     
     if (!queueId) {
-        alert('Error: No queue selected');
+        notifications.error('Error: No queue selected');
         return;
     }
 
@@ -162,7 +168,7 @@ export async function addFilmToQueue(filmId, filmTitle) {
         // Get film details from the displayed film data
         const film = allFilms.find(f => f.id == filmId);
         if (!film) {
-            alert('Error: Film data not found');
+            notifications.error('Error: Film data not found');
             return;
         }
 
@@ -174,16 +180,16 @@ export async function addFilmToQueue(filmId, filmTitle) {
         });
 
         if (response.ok) {
-            alert(`"${filmTitle}" has been added to the queue!`);
+            notifications.success(`"${filmTitle}" has been added to the queue!`);
             // Refresh the queue films list
             loadQueueFilms(queueId);
         } else {
             const errorText = await response.text();
-            alert(`Failed to add film to queue: ${errorText}`);
+            notifications.error(`Failed to add film to queue: ${errorText}`);
         }
     } catch (error) {
         console.error('Error adding film to queue:', error);
-        alert('Failed to add film to queue. Please try again.');
+        notifications.error('Failed to add film to queue. Please try again.');
     }
 }
 
@@ -191,12 +197,19 @@ export async function removeFilmFromQueue(filmId, filmTitle) {
     const queueId = sessionStorage.getItem('currentQueueId');
     
     if (!queueId) {
-        alert('Error: No queue selected');
+        notifications.error('Error: No queue selected');
         return;
     }
 
     // Confirm removal
-    if (!confirm(`Are you sure you want to remove "${filmTitle}" from the queue?`)) {
+    const confirmed = await notifications.confirm(
+        'Remove Film',
+        `Are you sure you want to remove "${filmTitle}" from the queue?`,
+        'Remove',
+        'Cancel'
+    );
+    
+    if (!confirmed) {
         return;
     }
 
@@ -204,18 +217,18 @@ export async function removeFilmFromQueue(filmId, filmTitle) {
         const response = await api.removeFilmFromQueue(queueId, filmId);
 
         if (response.ok) {
-            alert(`"${filmTitle}" has been removed from the queue!`);
+            notifications.success(`"${filmTitle}" has been removed from the queue!`);
             // Refresh the queue films list
             loadQueueFilms(queueId);
         } else if (response.status === 404) {
-            alert('Film not found in queue.');
+            notifications.warning('Film not found in queue.');
         } else {
             const errorText = await response.text();
-            alert(`Failed to remove film from queue: ${errorText}`);
+            notifications.error(`Failed to remove film from queue: ${errorText}`);
         }
     } catch (error) {
         console.error('Error removing film from queue:', error);
-        alert('Failed to remove film from queue. Please try again.');
+        notifications.error('Failed to remove film from queue. Please try again.');
     }
 }
 

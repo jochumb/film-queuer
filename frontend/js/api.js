@@ -80,5 +80,18 @@ export const api = {
             })
         });
         return response;
+    },
+
+    async reorderQueues(queueOrder) {
+        const response = await fetch(`${API_BASE}/queues/reorder`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                queueOrder: queueOrder
+            })
+        });
+        return response;
     }
 };

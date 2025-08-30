@@ -2,6 +2,7 @@ import { api } from './api.js';
 import { setupPersonSearch } from './search.js';
 import { loadQueues } from './queue.js';
 import { setupNavigation, handleInitialRoute } from './navigation.js';
+import { notifications } from './notifications.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Film Queuer app initialized');

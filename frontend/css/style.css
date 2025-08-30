@@ -193,6 +193,53 @@ main {
     background-color: white;
     border-radius: 4px;
     border-left: 4px solid #27ae60;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.queue-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.queue-item:hover {
+    background-color: #f0f8ff;
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.queue-item.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.queue-item .drag-handle {
+    color: #95a5a6;
+    font-size: 14px;
+    cursor: grab !important;
+    user-select: none;
+    padding: 0.75rem;
+    margin: -0.8rem 0 -0.8rem -0.8rem;
+    border-radius: 4px 0 0 4px;
+    transition: background-color 0.2s ease;
+}
+
+.queue-item .drag-handle:hover {
+    color: #7f8c8d;
+    background-color: rgba(149, 165, 166, 0.1);
+}
+
+.queue-item .drag-handle:active {
+    cursor: grabbing !important;
+}
+
+.queue-info {
+    flex: 1;
+    position: relative;
+    cursor: pointer;
+    padding: 0.25rem 0;
 }
 
 .queue-header {
@@ -226,14 +273,7 @@ main {
 
 .clickable {
     cursor: pointer;
-    transition: all 0.2s ease;
     position: relative;
-}
-
-.clickable:hover {
-    background-color: #f0f8ff;
-    transform: translateX(2px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .edit-indicator {
@@ -806,5 +846,244 @@ main {
     
     .filter-info-inline {
         text-align: left;
+    }
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 400px;
+}
+
+.toast {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-left: 4px solid #3498db;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.toast-show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-hide {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    gap: 0.75rem;
+}
+
+.toast-icon {
+    font-weight: bold;
+    font-size: 1.1em;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.toast-message {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #95a5a6;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    color: #7f8c8d;
+    background-color: rgba(0,0,0,0.05);
+}
+
+/* Toast Types */
+.toast-success {
+    border-left-color: #27ae60;
+}
+
+.toast-success .toast-icon {
+    color: #27ae60;
+}
+
+.toast-error {
+    border-left-color: #e74c3c;
+}
+
+.toast-error .toast-icon {
+    color: #e74c3c;
+}
+
+.toast-warning {
+    border-left-color: #f39c12;
+}
+
+.toast-warning .toast-icon {
+    color: #f39c12;
+}
+
+.toast-info {
+    border-left-color: #3498db;
+}
+
+.toast-info .toast-icon {
+    color: #3498db;
+}
+
+/* Modal System */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    pointer-events: none;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: auto;
+}
+
+.modal-show {
+    opacity: 1;
+}
+
+.modal-hide {
+    opacity: 0;
+}
+
+.modal-dialog {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    max-width: 500px;
+    width: 100%;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.modal-show .modal-dialog {
+    transform: scale(1);
+}
+
+.modal-hide .modal-dialog {
+    transform: scale(0.9);
+}
+
+.modal-header {
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+}
+
+.modal-body {
+    padding: 1rem 1.5rem;
+}
+
+.modal-body p {
+    margin: 0;
+    line-height: 1.5;
+    color: #555;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* Mobile Responsiveness for Notifications */
+@media (max-width: 768px) {
+    .toast-container {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+    
+    .modal-overlay {
+        padding: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
     }
 }

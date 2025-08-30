@@ -57,9 +57,16 @@ backend/src/main/kotlin/me/jochum/filmqueuer/
 frontend/
 ├── index.html                  # Main HTML page
 ├── css/
-│   └── style.css              # Application styles (includes drag-and-drop)
+│   └── style.css              # Application styles (includes drag-and-drop + notifications)
 └── js/
-    └── app.js                 # Main JavaScript (includes manual sorting)
+    ├── app.js                 # Main JavaScript entry point
+    ├── api.js                 # API client with queue reordering endpoints
+    ├── search.js              # Person search functionality
+    ├── queue.js               # Queue management and film operations
+    ├── ui.js                  # UI rendering and display logic
+    ├── navigation.js          # SPA routing and navigation
+    ├── dragdrop.js            # Drag-and-drop functionality for queues and films
+    └── notifications.js       # Toast notifications and modal confirmations
 ```
 
 ## Core Features
@@ -68,6 +75,7 @@ frontend/
 - Search TMDB for actors, directors, writers
 - Save selected persons to create film queues
 - Department-based role translation (Acting → Actor, etc.)
+- Toast notifications for success/error feedback
 
 ### 2. Filmography Browse & Filter
 - Load person's complete filmography from TMDB
@@ -76,15 +84,29 @@ frontend/
 - Films ordered chronologically (oldest to newest)
 
 ### 3. Film Queue Management
-- Add/remove films from personal queues
+- Add/remove films from personal queues with toast notifications
 - Visual indicators show which films are already queued
 - Manual drag-and-drop reordering with persistent sort order
-- Two-column responsive layout (filmography + queue)
+- Modal confirmations for destructive actions (film removal)
+- Two-column responsive layout (queue on left, filmography on right)
 
-### 4. Database & Temporal Types
+### 4. Queue List Management
+- Drag-and-drop reordering of queues themselves
+- Persistent queue ordering with database sort_order field
+- Clean interaction zones (drag handle left, click area right)
+- Visual feedback during queue operations
+
+### 5. User Experience & Interface
+- **Toast Notifications**: Modern, non-blocking success/error/warning messages
+- **Modal Confirmations**: Beautiful confirmation dialogs instead of browser alerts
+- **Auto-dismiss**: Success messages disappear automatically, errors persist until dismissed
+- **Responsive Design**: Mobile-friendly notifications and interactions
+- **Visual Feedback**: Hover states, drag indicators, and smooth animations
+
+### 6. Database & Temporal Types
 - **Proper temporal types**: `Instant` for timestamps, `LocalDate` for dates
 - **UUID-based entity IDs** for all primary keys
-- **Sort order support** for manual film arrangement
+- **Sort order support** for manual queue and film arrangement
 - **Comprehensive migrations** with rollback support
 
 ## Database Schema
@@ -108,11 +130,13 @@ queue_films: queue_id (UUID), film_tmdb_id, added_at (TIMESTAMP), sort_order (IN
 - `GET /persons/{tmdbId}/filmography?department={dept}` - Get filmography
 
 ### Queue Management  
-- `GET /queues` - List all queues with person data
+- `GET /queues` - List all queues with person data (ordered by sort_order)
+- `GET /queues/{id}` - Get specific queue with person data
 - `GET /queues/{id}/films` - Get queue films (ordered by sort_order)
 - `POST /queues/{id}/films` - Add film to queue
 - `DELETE /queues/{id}/films/{filmId}` - Remove film from queue  
-- `PUT /queues/{id}/films/reorder` - Manual reorder via drag-and-drop
+- `PUT /queues/{id}/films/reorder` - Reorder films within queue
+- `PUT /queues/reorder` - Reorder queues themselves
 
 ## Key Architectural Decisions
 
@@ -158,13 +182,6 @@ DATABASE_PASSWORD=password
 - **Run with Docker**: `docker-compose up --build`
   - Backend: http://localhost:8080
   - Frontend: http://localhost:3000
-
-## Database Migrations
-
-Located in `src/main/resources/db/migration/`:
-- **V2_1__improve_temporal_types_safe.sql** - Recommended production migration
-- **V2_2__rollback_temporal_types.sql** - Rollback migration if needed
-- **README.md** - Detailed migration documentation
 
 ## Code Quality & Testing
 

@@ -10,4 +10,6 @@ interface QueueRepository {
     suspend fun findAll(): List<Queue>
 
     suspend fun deleteById(id: UUID): Boolean
+
+    suspend fun reorderQueues(queueIds: List<UUID>): Boolean
 }
