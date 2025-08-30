@@ -44,7 +44,12 @@ export function displayQueuePreviews(queuePreviews) {
             <div class="queue-preview-card ${cardColorClass}" onclick="navigateToQueue('${queuePreview.queue.id}')">
                 <div class="queue-preview-header">
                     <div class="person-info">
-                        <div class="person-avatar">${queuePreview.queue.person ? queuePreview.queue.person.name.charAt(0).toUpperCase() : '?'}</div>
+                        <div class="person-avatar ${queuePreview.queue.person?.imagePath ? 'has-image' : ''}">
+                            ${queuePreview.queue.person?.imagePath ? 
+                                `<img src="${queuePreview.queue.person.imagePath}" alt="${queuePreview.queue.person.name}">` : 
+                                (queuePreview.queue.person ? queuePreview.queue.person.name.charAt(0).toUpperCase() : '?')
+                            }
+                        </div>
                         <div class="person-details">
                             <h4>${queuePreview.queue.person ? queuePreview.queue.person.name : 'Unknown'}</h4>
                             <span class="queue-preview-role">${queuePreview.queue.person ? translateDepartmentToRole(queuePreview.queue.person.department) : ''}</span>

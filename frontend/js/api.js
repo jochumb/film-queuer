@@ -16,7 +16,7 @@ export const api = {
         return response.json();
     },
 
-    async selectPerson(tmdbId, name, department) {
+    async selectPerson(tmdbId, name, department, imagePath) {
         const response = await fetch(`${API_BASE}/persons/select`, {
             method: 'POST',
             headers: {
@@ -25,7 +25,8 @@ export const api = {
             body: JSON.stringify({
                 tmdbId: tmdbId,
                 name: name,
-                department: department
+                department: department,
+                imagePath: imagePath
             })
         });
         return response;

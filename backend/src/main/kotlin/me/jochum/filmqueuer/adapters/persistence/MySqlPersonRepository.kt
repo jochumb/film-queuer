@@ -15,6 +15,7 @@ class MySqlPersonRepository : PersonRepository {
                 it[tmdbId] = person.tmdbId
                 it[name] = person.name
                 it[department] = person.department
+                it[imagePath] = person.imagePath
             }
             person
         }
@@ -28,6 +29,7 @@ class MySqlPersonRepository : PersonRepository {
                         tmdbId = row[PersonTable.tmdbId],
                         name = row[PersonTable.name],
                         department = row[PersonTable.department],
+                        imagePath = row[PersonTable.imagePath],
                     )
                 }
         }
@@ -39,6 +41,7 @@ class MySqlPersonRepository : PersonRepository {
                     tmdbId = row[PersonTable.tmdbId],
                     name = row[PersonTable.name],
                     department = row[PersonTable.department],
+                    imagePath = row[PersonTable.imagePath],
                 )
             }
         }

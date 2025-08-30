@@ -4,6 +4,7 @@ data class Person(
     val tmdbId: Int,
     val name: String,
     val department: Department,
+    val imagePath: String? = null,
 )
 
 enum class Department {

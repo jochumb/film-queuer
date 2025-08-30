@@ -22,6 +22,7 @@ data class PersonSelectionDto(
     val tmdbId: Int,
     val name: String,
     val department: String?,
+    val imagePath: String? = null,
 )
 
 @Serializable
@@ -29,6 +30,7 @@ data class SavedPersonDto(
     val tmdbId: Int,
     val name: String,
     val department: String,
+    val imagePath: String? = null,
 )
 
 @Serializable

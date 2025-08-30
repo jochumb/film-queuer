@@ -63,7 +63,7 @@ export function setupPersonSearch() {
                     <h3>${person.name}</h3>
                     ${person.department ? `<div class="person-department">${person.department}</div>` : ''}
                     ${person.knownFor.length > 0 ? `<div class="person-known-for">Known for: ${person.knownFor.slice(0, 3).join(', ')}</div>` : ''}
-                    <button class="select-person-btn" onclick="selectPerson(${person.id}, '${person.name.replace(/'/g, "\\'")}', '${person.department || ''}')">
+                    <button class="select-person-btn" onclick="selectPerson(${person.id}, '${person.name.replace(/'/g, "\\'")}', '${person.department || ''}', '${person.profilePath || ''}')">
                         Select
                     </button>
                 </div>
@@ -72,9 +72,9 @@ export function setupPersonSearch() {
     }
 }
 
-export async function selectPerson(tmdbId, name, department) {
+export async function selectPerson(tmdbId, name, department, imagePath) {
     try {
-        const response = await api.selectPerson(tmdbId, name, department);
+        const response = await api.selectPerson(tmdbId, name, department, imagePath);
 
         if (response.ok) {
             notifications.success(`${name} has been saved successfully!`);

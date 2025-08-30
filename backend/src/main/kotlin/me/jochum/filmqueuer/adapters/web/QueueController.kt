@@ -34,6 +34,7 @@ private suspend fun mapQueueToDto(
                             tmdbId = it.tmdbId,
                             name = it.name,
                             department = it.department.name,
+                            imagePath = it.imagePath,
                         )
                     },
             )

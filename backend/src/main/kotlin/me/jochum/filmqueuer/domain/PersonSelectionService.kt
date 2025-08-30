@@ -15,12 +15,14 @@ class PersonSelectionService(
         tmdbId: Int,
         name: String,
         department: Department,
+        imagePath: String? = null,
     ): PersonSelectionResult {
         val person =
             Person(
                 tmdbId = tmdbId,
                 name = name,
                 department = department,
+                imagePath = imagePath,
             )
 
         val savedPerson = personRepository.save(person)

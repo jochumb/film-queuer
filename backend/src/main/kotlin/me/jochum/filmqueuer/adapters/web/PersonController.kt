@@ -58,6 +58,7 @@ fun Route.configurePersonRoutes(
                         tmdbId = personDto.tmdbId,
                         name = personDto.name,
                         department = Department.fromString(personDto.department),
+                        imagePath = personDto.imagePath,
                     )
 
                 val response =
@@ -67,6 +68,7 @@ fun Route.configurePersonRoutes(
                                 tmdbId = result.person.tmdbId,
                                 name = result.person.name,
                                 department = result.person.department.name,
+                                imagePath = result.person.imagePath,
                             ),
                         queueId = result.queue.id.toString(),
                     )

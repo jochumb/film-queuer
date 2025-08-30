@@ -274,10 +274,10 @@ describe('Search Module', () => {
             mockApi.selectPerson.mockResolvedValue({ ok: true });
 
             // When
-            await selectPerson(31, 'Tom Hanks', 'ACTING');
+            await selectPerson(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
 
             // Then
-            expect(mockApi.selectPerson).toHaveBeenCalledWith(31, 'Tom Hanks', 'ACTING');
+            expect(mockApi.selectPerson).toHaveBeenCalledWith(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
             expect(mockNotifications.success).toHaveBeenCalledWith('Tom Hanks has been saved successfully!');
         });
 
@@ -291,7 +291,7 @@ describe('Search Module', () => {
             expect(searchInput.value).toBe('Test Query');
 
             // When
-            await selectPerson(31, 'Tom Hanks', 'ACTING');
+            await selectPerson(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
 
             // Then
             expect(searchResults.innerHTML).toBe('');
@@ -303,7 +303,7 @@ describe('Search Module', () => {
             mockApi.selectPerson.mockResolvedValue({ ok: false });
 
             // When
-            await selectPerson(31, 'Tom Hanks', 'ACTING');
+            await selectPerson(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
 
             // Then
             expect(mockNotifications.error).toHaveBeenCalledWith('Failed to save person. Please try again.');
@@ -315,7 +315,7 @@ describe('Search Module', () => {
             mockApi.selectPerson.mockRejectedValue(new Error('Network error'));
 
             // When
-            await selectPerson(31, 'Tom Hanks', 'ACTING');
+            await selectPerson(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
 
             // Then
             expect(consoleErrorSpy).toHaveBeenCalledWith('Error saving person:', expect.any(Error));
@@ -330,7 +330,7 @@ describe('Search Module', () => {
             mockApi.selectPerson.mockResolvedValue({ ok: true });
 
             // When/Then - should not throw error
-            await expect(selectPerson(31, 'Tom Hanks', 'ACTING')).resolves.not.toThrow();
+            await expect(selectPerson(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg')).resolves.not.toThrow();
         });
 
         test('should reload queues after successful selection', async () => {
@@ -338,12 +338,12 @@ describe('Search Module', () => {
             mockApi.selectPerson.mockResolvedValue({ ok: true });
             
             // When
-            await selectPerson(31, 'Tom Hanks', 'ACTING');
+            await selectPerson(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
 
             // Then - This test verifies the successful selection behavior
             // The dynamic import is mocked at the module level, so we can't easily test it
             // But we can verify the main functionality works
-            expect(mockApi.selectPerson).toHaveBeenCalledWith(31, 'Tom Hanks', 'ACTING');
+            expect(mockApi.selectPerson).toHaveBeenCalledWith(31, 'Tom Hanks', 'ACTING', '/path/to/image.jpg');
             expect(mockNotifications.success).toHaveBeenCalledWith('Tom Hanks has been saved successfully!');
             
             // The search results should be cleared
