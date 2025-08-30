@@ -221,5 +221,43 @@ fun Route.configureQueueRoutes(
                 call.respond(HttpStatusCode.InternalServerError, "Failed to reorder queues: ${e.message}")
             }
         }
+
+        get("/previews") {
+            try {
+                val limitParam = call.parameters["limit"]
+                val filmsLimitParam = call.parameters["filmsLimit"]
+
+                val limit = limitParam?.toIntOrNull() ?: 9
+                val filmsLimit = filmsLimitParam?.toIntOrNull() ?: 3
+
+                val queues = queueRepository.findAll().take(limit)
+                val previews =
+                    queues.map { queue ->
+                        val films = queueFilmService.getQueueFilms(queue.id).take(filmsLimit)
+                        val totalFilms = queueFilmService.getQueueFilms(queue.id).size
+                        val queueDto = mapQueueToDto(queue, personRepository)
+
+                        val filmsDto =
+                            films.map { film ->
+                                FilmResponseDto(
+                                    tmdbId = film.tmdbId,
+                                    title = film.title,
+                                    originalTitle = film.originalTitle,
+                                    releaseDate = film.releaseDate.toDateString(),
+                                )
+                            }
+
+                        QueuePreviewDto(
+                            queue = queueDto,
+                            films = filmsDto,
+                            totalFilms = totalFilms,
+                        )
+                    }
+
+                call.respond(QueuePreviewsDto(previews))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to fetch queue previews: ${e.message}")
+            }
+        }
     }
 }

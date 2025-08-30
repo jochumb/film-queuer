@@ -14,3 +14,15 @@ data class QueueDto(
 data class ReorderQueuesDto(
     val queueOrder: List<String>,
 )
+
+@Serializable
+data class QueuePreviewDto(
+    val queue: QueueDto,
+    val films: List<FilmResponseDto>,
+    val totalFilms: Int,
+)
+
+@Serializable
+data class QueuePreviewsDto(
+    val previews: List<QueuePreviewDto>,
+)

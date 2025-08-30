@@ -93,5 +93,10 @@ export const api = {
             })
         });
         return response;
+    },
+
+    async getQueuePreviews(limit = 9, filmsLimit = 3) {
+        const response = await fetch(`${API_BASE}/queues/previews?limit=${limit}&filmsLimit=${filmsLimit}`);
+        return response.json();
     }
 };

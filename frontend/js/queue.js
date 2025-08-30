@@ -1,7 +1,7 @@
 import { api } from './api.js';
-import { displayQueues, showFilmManagementPage, displayFilteredFilms, displayQueueFilms, updateQueueStats } from './ui.js';
+import { displayQueues, displayQueuePreviews, showFilmManagementPage, displayFilteredFilms, displayQueueFilms, updateQueueStats } from './ui.js';
 import { setupQueueDragAndDrop, setupQueueListDragAndDrop } from './dragdrop.js';
-import { navigateToHome } from './navigation.js';
+import { navigateToManage } from './navigation.js';
 import { notifications } from './notifications.js';
 
 let allFilms = [];
@@ -22,6 +22,24 @@ export async function loadQueues() {
     }
 }
 
+export async function loadQueuePreviews() {
+    try {
+        const data = await api.getQueuePreviews(9, 3);
+        displayQueuePreviews(data.previews);
+    } catch (error) {
+        console.error('Error loading queue previews:', error);
+        // Display error state
+        const container = document.getElementById('queuePreviews');
+        if (container) {
+            container.innerHTML = `
+                <div class="error-state">
+                    <p>Unable to load queues. <span class="retry-link" onclick="loadQueuePreviews()">Try again</span></p>
+                </div>
+            `;
+        }
+    }
+}
+
 export async function showQueuePage(queueId) {
     try {
         // Fetch queue details
@@ -38,7 +56,7 @@ export async function showQueuePage(queueId) {
     } catch (error) {
         console.error('Error loading queue:', error);
         notifications.error('Queue not found or error loading queue');
-        navigateToHome();
+        navigateToManage();
     }
 }
 

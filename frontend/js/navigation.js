@@ -1,6 +1,6 @@
-import { showHomePage } from './ui.js';
+import { showHomePage, showManagePage } from './ui.js';
 import { setupPersonSearch } from './search.js';
-import { loadQueues, showQueuePage } from './queue.js';
+import { loadQueues, loadQueuePreviews, showQueuePage } from './queue.js';
 
 export function setupNavigation() {
     window.addEventListener('popstate', handleRouteChange);
@@ -11,6 +11,8 @@ export function handleInitialRoute() {
     if (path.startsWith('/queue/')) {
         const queueId = path.split('/')[2];
         navigateToQueue(queueId, false); // false = don't push state
+    } else if (path === '/manage') {
+        navigateToManage(false);
     } else {
         navigateToHome(false);
     }
@@ -21,6 +23,8 @@ function handleRouteChange() {
     if (path.startsWith('/queue/')) {
         const queueId = path.split('/')[2];
         showQueuePage(queueId);
+    } else if (path === '/manage') {
+        navigateToManage(false);
     } else {
         navigateToHome(false);
     }
@@ -38,10 +42,18 @@ export function navigateToHome(pushState = true) {
         history.pushState({ page: 'home' }, 'Film Queuer', '/');
     }
     
-    // Reset to main page HTML structure
+    // Show the new home page and load queue previews
     showHomePage();
+    loadQueuePreviews();
+}
+
+export function navigateToManage(pushState = true) {
+    if (pushState) {
+        history.pushState({ page: 'manage' }, 'Queue Management', '/manage');
+    }
     
-    // Re-initialize the home page functionality
+    // Show the manage page and initialize functionality
+    showManagePage();
     setupPersonSearch();
     loadQueues();
 }
@@ -49,3 +61,5 @@ export function navigateToHome(pushState = true) {
 // Make navigation functions available globally for onclick handlers
 window.navigateToQueue = navigateToQueue;
 window.navigateToHome = navigateToHome;
+window.navigateToManage = navigateToManage;
+window.loadQueuePreviews = loadQueuePreviews;
