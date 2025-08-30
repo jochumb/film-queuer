@@ -174,23 +174,43 @@ DATABASE_PASSWORD=password
 
 ## Development Commands
 
+### Backend
 - **Build**: `./gradlew :backend:build`
 - **Run backend**: `./gradlew :backend:run` (port 8080)  
 - **Run tests**: `./gradlew :backend:test`
 - **Lint code**: `./gradlew :backend:lint`
 - **Format code**: `./gradlew :backend:format`
+
+### Frontend
+- **Run tests**: `cd frontend && npm test`
+- **Test with coverage**: `cd frontend && npm run test:ci`
+- **Watch mode**: `cd frontend && npm run test:watch`
+
+### Docker
 - **Run with Docker**: `docker-compose up --build`
   - Backend: http://localhost:8080
   - Frontend: http://localhost:3000
+  - **Note**: Frontend tests run automatically during Docker build
 
 ## Code Quality & Testing
 
+### Backend Testing
 - **Linting**: ktlint enforces Kotlin coding standards
 - **Testing**: Comprehensive test coverage across all layers
   - Repository tests with H2 in-memory database
   - Service tests with MockK for mocking
   - Controller tests with Ktor testing framework
 - **Architecture**: Hexagonal architecture with dependency injection
+
+### Frontend Testing  
+- **Test Framework**: Jest with JSDOM for DOM simulation
+- **Coverage**: 51 tests across 4 test suites
+  - **search.test.js**: Department translation, search workflow, person selection (18 tests)
+  - **dragdrop.test.js**: Drag-and-drop functionality for films and queues (14 tests) 
+  - **notifications.test.js**: Toast notifications and modal confirmations (13 tests)
+  - **navigation.test.js**: URL parsing and module structure (6 tests)
+- **Mocking**: APIs, browser storage, DOM elements, and external dependencies
+- **CI Integration**: Tests run automatically in Docker builds
 - **Manual QA**: Drag-and-drop functionality, visual queue indicators
 
 ## Development Notes
