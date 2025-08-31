@@ -60,7 +60,7 @@ class MySqlFilmRepositoryTest {
             val found = repository.findByTmdbId(550)
             assertNotNull(found)
             assertEquals(film, found)
-            
+
             // Additional detailed field assertions
             assertEquals(550, found.tmdbId)
             assertEquals("Fight Club", found.title)
@@ -75,8 +75,26 @@ class MySqlFilmRepositoryTest {
     fun `update should modify existing film`() =
         runBlocking {
             // Given
-            val film1 = Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), 139, listOf("Drama", "Thriller"), "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg")
-            val film2 = Film(550, "Updated Title", "Updated Original Title", LocalDate.of(2000, 1, 1), 120, listOf("Action", "Thriller"), "https://image.tmdb.org/t/p/w500/updated.jpg")
+            val film1 =
+                Film(
+                    550,
+                    "Fight Club",
+                    "Fight Club",
+                    LocalDate.of(1999, 10, 15),
+                    139,
+                    listOf("Drama", "Thriller"),
+                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                )
+            val film2 =
+                Film(
+                    550,
+                    "Updated Title",
+                    "Updated Original Title",
+                    LocalDate.of(2000, 1, 1),
+                    120,
+                    listOf("Action", "Thriller"),
+                    "https://image.tmdb.org/t/p/w500/updated.jpg",
+                )
 
             // When
             repository.save(film1) // Insert original film
@@ -86,7 +104,7 @@ class MySqlFilmRepositoryTest {
             assertTrue(updated) // Should return true indicating successful update
             val found = repository.findByTmdbId(550)
             assertNotNull(found)
-            
+
             // Validate all updated fields
             assertEquals(film2.title, found.title) // Should have updated title
             assertEquals(film2.originalTitle, found.originalTitle) // Should have updated original title
@@ -142,9 +160,33 @@ class MySqlFilmRepositoryTest {
             // Given
             val films =
                 listOf(
-                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), 139, listOf("Drama", "Thriller"), "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"),
-                    Film(13, "Forrest Gump", "Forrest Gump", LocalDate.of(1994, 7, 6), 142, listOf("Drama", "Romance"), "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg"),
-                    Film(238, "The Godfather", "The Godfather", LocalDate.of(1972, 3, 14), 175, listOf("Crime", "Drama"), "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg"),
+                    Film(
+                        550,
+                        "Fight Club",
+                        "Fight Club",
+                        LocalDate.of(1999, 10, 15),
+                        139,
+                        listOf("Drama", "Thriller"),
+                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    ),
+                    Film(
+                        13,
+                        "Forrest Gump",
+                        "Forrest Gump",
+                        LocalDate.of(1994, 7, 6),
+                        142,
+                        listOf("Drama", "Romance"),
+                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                    ),
+                    Film(
+                        238,
+                        "The Godfather",
+                        "The Godfather",
+                        LocalDate.of(1972, 3, 14),
+                        175,
+                        listOf("Crime", "Drama"),
+                        "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                    ),
                 )
             films.forEach { repository.save(it) }
 
