@@ -17,21 +17,32 @@ export function displayQueues(queues) {
                     <div class="column-header">
                         <h4>Priority Queues</h4>
                     </div>
-                    <div class="saved-persons-list" id="queuesList">
-                        ${priorityQueues.map((queue, index) => `
-                            <div class="queue-item-with-rank">
-                                <div class="queue-rank">${index + 1}</div>
-                                <div class="saved-person-item queue-item clickable" draggable="true" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
-                                    <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
-                                    <div class="queue-info">
-                                        ${queue.person ? `
-                                            <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
-                                        ` : 'Unknown item'}
-                                        <span class="edit-indicator"><i data-feather="edit-3"></i></span>
+                    <div class="priority-queue-container">
+                        ${Array.from({length: 9}, (_, index) => {
+                            const queue = priorityQueues[index];
+                            return `
+                                <div class="queue-item-with-rank">
+                                    <div class="queue-rank">${index + 1}</div>
+                                    <div class="queue-slot" data-rank="${index + 1}">
+                                        ${queue ? `
+                                            <div class="saved-person-item queue-item clickable" draggable="true" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
+                                                <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
+                                                <div class="queue-info">
+                                                    ${queue.person ? `
+                                                        <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
+                                                    ` : 'Unknown item'}
+                                                    <span class="edit-indicator"><i data-feather="edit-3"></i></span>
+                                                </div>
+                                            </div>
+                                        ` : `
+                                            <div class="empty-queue-slot">
+                                                <span class="empty-slot-text">Empty slot</span>
+                                            </div>
+                                        `}
                                     </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 </div>
                 

@@ -237,8 +237,13 @@ describe('Queue List Drag and Drop', () => {
     test('should handle queue drag start event', () => {
         // Given
         document.body.innerHTML = `
-            <div id="queuesList">
-                <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
+            <div class="priority-queue-container">
+                <div class="queue-item-with-rank">
+                    <div class="queue-rank">1</div>
+                    <div class="queue-slot" data-rank="1">
+                        <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
+                    </div>
+                </div>
             </div>
         `;
         setupQueueListDragAndDrop();
@@ -262,17 +267,32 @@ describe('Queue List Drag and Drop', () => {
     test('should call reorder queues API on drop', async () => {
         // Given
         document.body.innerHTML = `
-            <div id="queuesList">
-                <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
-                <div class="queue-item" draggable="true" data-queue-id="queue-2">Queue 2</div>
-                <div class="queue-item" draggable="true" data-queue-id="queue-3">Queue 3</div>
+            <div class="priority-queue-container">
+                <div class="queue-item-with-rank">
+                    <div class="queue-rank">1</div>
+                    <div class="queue-slot" data-rank="1">
+                        <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
+                    </div>
+                </div>
+                <div class="queue-item-with-rank">
+                    <div class="queue-rank">2</div>
+                    <div class="queue-slot" data-rank="2">
+                        <div class="queue-item" draggable="true" data-queue-id="queue-2">Queue 2</div>
+                    </div>
+                </div>
+                <div class="queue-item-with-rank">
+                    <div class="queue-rank">3</div>
+                    <div class="queue-slot" data-rank="3">
+                        <div class="queue-item" draggable="true" data-queue-id="queue-3">Queue 3</div>
+                    </div>
+                </div>
             </div>
         `;
         setupQueueListDragAndDrop();
         
         mockApi.reorderQueues.mockResolvedValue({ ok: true });
         
-        const container = document.getElementById('queuesList');
+        const container = document.querySelector('.priority-queue-container');
         const firstItem = container.querySelector('.queue-item');
         
         // First simulate dragstart to set up drag state
@@ -301,7 +321,7 @@ describe('Queue List Drag and Drop', () => {
     });
 
     test('should handle missing queue container gracefully', () => {
-        // Given - no queuesList element
+        // Given - no priority-queue-container element
         document.body.innerHTML = '<div></div>';
 
         // When/Then - should not throw error
@@ -311,8 +331,13 @@ describe('Queue List Drag and Drop', () => {
     test('should handle API error during queue reorder', async () => {
         // Given
         document.body.innerHTML = `
-            <div id="queuesList">
-                <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
+            <div class="priority-queue-container">
+                <div class="queue-item-with-rank">
+                    <div class="queue-rank">1</div>
+                    <div class="queue-slot" data-rank="1">
+                        <div class="queue-item" draggable="true" data-queue-id="queue-1">Queue 1</div>
+                    </div>
+                </div>
             </div>
         `;
         setupQueueListDragAndDrop();
@@ -320,7 +345,7 @@ describe('Queue List Drag and Drop', () => {
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         mockApi.reorderQueues.mockRejectedValue(new Error('Server error'));
         
-        const container = document.getElementById('queuesList');
+        const container = document.querySelector('.priority-queue-container');
         const firstItem = container.querySelector('.queue-item');
         
         // First simulate dragstart to set up drag state

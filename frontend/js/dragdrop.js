@@ -89,7 +89,7 @@ async function reorderQueueFilms(filmOrder) {
 
 export function setupQueueListDragAndDrop() {
     // Only setup drag-and-drop for priority queues (in the first column)
-    const queueItems = document.querySelectorAll('#queuesList .queue-item');
+    const queueItems = document.querySelectorAll('.priority-queue-container .queue-item');
     let draggedItem = null;
 
     queueItems.forEach(item => {
@@ -107,37 +107,76 @@ export function setupQueueListDragAndDrop() {
         item.addEventListener('dragover', function(e) {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            
-            // Get the wrapper container (.queue-item-with-rank)
-            const draggedWrapper = draggedItem.closest('.queue-item-with-rank');
-            const targetWrapper = this.closest('.queue-item-with-rank');
-            const container = targetWrapper.parentNode;
-            
-            const afterElement = getDragAfterElementQueue(container, e.clientY);
-            if (afterElement == null) {
-                container.appendChild(draggedWrapper);
-            } else {
-                container.insertBefore(draggedWrapper, afterElement);
-            }
         });
     });
 
-    // Handle drop event on container
-    const queueListContainer = document.getElementById('queuesList');
-    if (queueListContainer) {
-        queueListContainer.addEventListener('drop', function(e) {
+    // Handle drag and drop on the priority container
+    const priorityContainer = document.querySelector('.priority-queue-container');
+    if (priorityContainer) {
+        // Set up drag and drop for all slots
+        priorityContainer.querySelectorAll('.queue-slot').forEach(slot => {
+            slot.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                if (draggedItem && this !== draggedItem.closest('.queue-slot')) {
+                    this.classList.add('drag-target');
+                    
+                    // Move the dragged item to this slot during dragover for visual feedback
+                    const draggedSlot = draggedItem.closest('.queue-slot');
+                    const thisSlot = this;
+                    
+                    // Get the items currently in both slots
+                    const thisItem = thisSlot.querySelector('.queue-item');
+                    const draggedItemElement = draggedItem;
+                    
+                    // Clear both slots content
+                    draggedSlot.innerHTML = '';
+                    thisSlot.innerHTML = '';
+                    
+                    // Move dragged item to target slot
+                    thisSlot.appendChild(draggedItemElement);
+                    
+                    // If there was an item in the target slot, move it to the dragged slot or create empty slot
+                    if (thisItem && thisItem !== draggedItemElement) {
+                        draggedSlot.appendChild(thisItem);
+                    } else {
+                        draggedSlot.innerHTML = '<div class="empty-queue-slot"><span class="empty-slot-text">Empty slot</span></div>';
+                    }
+                }
+            });
+            
+            slot.addEventListener('dragleave', function(e) {
+                // Only remove if not entering a child element
+                if (!this.contains(e.relatedTarget)) {
+                    this.classList.remove('drag-target');
+                }
+            });
+        });
+        
+        priorityContainer.addEventListener('drop', function(e) {
             e.preventDefault();
+            
+            // Remove drag-target class from all slots
+            this.querySelectorAll('.queue-slot').forEach(slot => {
+                slot.classList.remove('drag-target');
+            });
+            
             if (draggedItem) {
-                // Get new order of queue IDs
-                const newOrder = Array.from(this.querySelectorAll('.queue-item'))
-                    .map(item => item.dataset.queueId);
+                // Get new order of queue IDs based on current slot positions
+                const newOrder = Array.from(this.querySelectorAll('.queue-slot'))
+                    .map(slot => {
+                        const queueItem = slot.querySelector('.queue-item');
+                        return queueItem ? queueItem.dataset.queueId : null;
+                    })
+                    .filter(id => id !== null);
                 
                 // Send reorder request to backend
                 reorderQueues(newOrder);
             }
         });
 
-        queueListContainer.addEventListener('dragover', function(e) {
+        priorityContainer.addEventListener('dragover', function(e) {
             e.preventDefault();
         });
     }
@@ -169,6 +208,10 @@ async function reorderQueues(queueOrder) {
         }
         
         console.log('Queues reordered successfully');
+        
+        // Reload queues to refresh the UI with correct rankings
+        const { loadQueues } = await import('./queue.js');
+        loadQueues();
     } catch (error) {
         console.error('Error reordering queues:', error);
         // Reload queues to reset to server state
