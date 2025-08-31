@@ -4,14 +4,14 @@ import me.jochum.filmqueuer.domain.Person
 import me.jochum.filmqueuer.domain.PersonRepository
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.replace
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
 class MySqlPersonRepository : PersonRepository {
     override suspend fun save(person: Person): Person =
         newSuspendedTransaction {
-            PersonTable.insertIgnore {
+            PersonTable.replace {
                 it[tmdbId] = person.tmdbId
                 it[name] = person.name
                 it[department] = person.department

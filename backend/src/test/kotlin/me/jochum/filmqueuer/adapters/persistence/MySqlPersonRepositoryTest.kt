@@ -49,6 +49,7 @@ class MySqlPersonRepositoryTest {
                     tmdbId = 123,
                     name = "John Doe",
                     department = Department.ACTING,
+                    imagePath = null,
                 )
 
             // When
@@ -62,7 +63,7 @@ class MySqlPersonRepositoryTest {
         }
 
     @Test
-    fun `save should ignore duplicate tmdbId`() =
+    fun `save should replace existing person with same tmdbId`() =
         runBlocking {
             // Given
             val person1 =
@@ -70,21 +71,23 @@ class MySqlPersonRepositoryTest {
                     tmdbId = 123,
                     name = "John Doe",
                     department = Department.ACTING,
+                    imagePath = null,
                 )
             val person2 =
                 Person(
                     tmdbId = 123,
                     name = "Jane Smith",
                     department = Department.DIRECTING,
+                    imagePath = "https://image.tmdb.org/t/p/w200/profile.jpg",
                 )
 
             // When
             repository.save(person1)
-            repository.save(person2) // Should be ignored due to duplicate tmdbId
+            repository.save(person2) // Should replace the first person
 
             // Then
             val foundPerson = repository.findByTmdbId(123)
-            assertEquals(person1, foundPerson) // Should still be the first person
+            assertEquals(person2, foundPerson) // Should now be the second person
         }
 
     @Test
@@ -101,9 +104,9 @@ class MySqlPersonRepositoryTest {
     fun `findAll should return all saved persons`() =
         runBlocking {
             // Given
-            val person1 = Person(123, "John Doe", Department.ACTING)
-            val person2 = Person(456, "Jane Smith", Department.DIRECTING)
-            val person3 = Person(789, "Bob Writer", Department.WRITING)
+            val person1 = Person(123, "John Doe", Department.ACTING, null)
+            val person2 = Person(456, "Jane Smith", Department.DIRECTING, null)
+            val person3 = Person(789, "Bob Writer", Department.WRITING, null)
 
             // When
             repository.save(person1)
@@ -133,7 +136,7 @@ class MySqlPersonRepositoryTest {
     fun `deleteByTmdbId should remove person and return true`() =
         runBlocking {
             // Given
-            val person = Person(123, "John Doe", Department.ACTING)
+            val person = Person(123, "John Doe", Department.ACTING, null)
             repository.save(person)
 
             // When
@@ -155,15 +158,47 @@ class MySqlPersonRepositoryTest {
         }
 
     @Test
+    fun `save should update person with imagePath for enrichment`() =
+        runBlocking {
+            // Given
+            val personWithoutImage =
+                Person(
+                    tmdbId = 123,
+                    name = "John Doe",
+                    department = Department.ACTING,
+                    imagePath = null,
+                )
+            val personWithImage =
+                Person(
+                    tmdbId = 123,
+                    name = "John Doe",
+                    department = Department.ACTING,
+                    imagePath = "https://image.tmdb.org/t/p/w200/profile.jpg",
+                )
+
+            // When
+            repository.save(personWithoutImage)
+            val foundBeforeEnrichment = repository.findByTmdbId(123)
+
+            repository.save(personWithImage) // Enrich with image path
+            val foundAfterEnrichment = repository.findByTmdbId(123)
+
+            // Then
+            assertEquals(personWithoutImage, foundBeforeEnrichment)
+            assertEquals(personWithImage, foundAfterEnrichment)
+            assertEquals("https://image.tmdb.org/t/p/w200/profile.jpg", foundAfterEnrichment?.imagePath)
+        }
+
+    @Test
     fun `should handle all department types correctly`() =
         runBlocking {
             // Given
             val persons =
                 listOf(
-                    Person(1, "Actor", Department.ACTING),
-                    Person(2, "Director", Department.DIRECTING),
-                    Person(3, "Writer", Department.WRITING),
-                    Person(4, "Other", Department.OTHER),
+                    Person(1, "Actor", Department.ACTING, null),
+                    Person(2, "Director", Department.DIRECTING, null),
+                    Person(3, "Writer", Department.WRITING, null),
+                    Person(4, "Other", Department.OTHER, null),
                 )
 
             // When

@@ -30,6 +30,7 @@ class PersonSelectionServiceTest {
                     tmdbId = 123,
                     name = "Tom Hanks",
                     department = Department.ACTING,
+                    imagePath = null,
                 )
 
             val queueId = UUID.randomUUID()
@@ -62,6 +63,7 @@ class PersonSelectionServiceTest {
                     tmdbId = 456,
                     name = "Steven Spielberg",
                     department = Department.DIRECTING,
+                    imagePath = null,
                 )
 
             val queueId = UUID.randomUUID()

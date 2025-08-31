@@ -39,6 +39,12 @@ class TmdbClient : TmdbService {
         }.body()
     }
 
+    override suspend fun getPersonDetails(personId: Int): TmdbPerson {
+        return httpClient.get("$baseUrl/person/$personId") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+        }.body()
+    }
+
     fun close() {
         httpClient.close()
     }
