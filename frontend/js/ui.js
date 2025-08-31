@@ -52,8 +52,11 @@ export function displayQueuePreviews(queuePreviews) {
                         </div>
                         <div class="person-details">
                             <h4>${queuePreview.queue.person ? queuePreview.queue.person.name : 'Unknown'}</h4>
-                            <span class="queue-preview-role">${queuePreview.queue.person ? translateDepartmentToRole(queuePreview.queue.person.department) : ''}</span>
                         </div>
+                    </div>
+                    <div class="person-meta">
+                        <span class="queue-preview-role">${queuePreview.queue.person ? translateDepartmentToRole(queuePreview.queue.person.department) : ''}</span>
+                        <span class="film-count">${queuePreview.totalFilms} films</span>
                     </div>
                 </div>
                 <div class="queue-preview-films">
@@ -80,10 +83,6 @@ export function displayQueuePreviews(queuePreviews) {
                         }).join('') : 
                         '<div class="no-films"><div class="empty-icon">📽️</div><span>No films added yet</span></div>'
                     }
-                    ${queuePreview.totalFilms > 2 ? 
-                        `<div class="more-films">+${queuePreview.totalFilms - 2} more films</div>` : 
-                        ''
-                    }
                 </div>
             </div>
         `;
@@ -93,14 +92,16 @@ export function displayQueuePreviews(queuePreviews) {
 export function showHomePage() {
     document.querySelector('.container').innerHTML = `
         <header>
-            <h1>Film Queuer</h1>
+            <div class="header-content">
+                <h1>Film Queuer</h1>
+            </div>
+            <nav class="header-nav">
+                <button class="nav-button active" onclick="navigateToHome()">Home</button>
+                <button class="nav-button" onclick="navigateToManage()">Manage Queues</button>
+            </nav>
         </header>
         <main class="home-page">
             <section class="queue-previews-section">
-                <div class="section-header">
-                    <h3>Priority Queues</h3>
-                    <span class="view-all-link" onclick="navigateToManage()">Manage Queues →</span>
-                </div>
                 <div id="queuePreviews" class="queue-previews-container">
                     <div class="loading-message">Loading your queues...</div>
                 </div>
@@ -113,9 +114,12 @@ export function showManagePage() {
     document.querySelector('.container').innerHTML = `
         <header>
             <div class="header-content">
-                <h1>Queue Management</h1>
+                <h1>Film Queuer</h1>
             </div>
-            <button class="back-button" onclick="navigateToHome()">← Back to Home</button>
+            <nav class="header-nav">
+                <button class="nav-button" onclick="navigateToHome()">Home</button>
+                <button class="nav-button active" onclick="navigateToManage()">Manage Queues</button>
+            </nav>
         </header>
         <main>
             <section class="search-section">
@@ -138,16 +142,22 @@ export function showFilmManagementPage(queueId, personName) {
     document.querySelector('.container').innerHTML = `
         <header>
             <div class="header-content">
-                <h1>${personName}'s Films</h1>
+                <h1>Film Queuer</h1>
             </div>
-            <button class="back-button" onclick="navigateToManage()">← Back to Queue Management</button>
+            <nav class="header-nav">
+                <button class="nav-button" onclick="navigateToHome()">Home</button>
+                <button class="nav-button" onclick="navigateToManage()">Manage Queues</button>
+            </nav>
         </header>
         <main class="two-column-layout">
             <div class="left-column">
                 <div class="queue-films-section">
                     <div class="queue-header-sticky">
+                        <div class="person-name-header">
+                            <h2>${personName}</h2>
+                        </div>
                         <div class="queue-title-row">
-                            <h2>Queue</h2>
+                            <h3>Queue</h3>
                             <div class="queue-stats" id="queueStats">
                                 <span class="film-count">0 films</span>
                             </div>
