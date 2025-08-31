@@ -1,5 +1,6 @@
 package me.jochum.filmqueuer.adapters.persistence
 
+import me.jochum.filmqueuer.domain.Department
 import me.jochum.filmqueuer.domain.Person
 import me.jochum.filmqueuer.domain.PersonRepository
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -7,6 +8,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.replace
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.update
 
 class MySqlPersonRepository : PersonRepository {
     override suspend fun save(person: Person): Person =
@@ -49,5 +51,17 @@ class MySqlPersonRepository : PersonRepository {
     override suspend fun deleteByTmdbId(tmdbId: Int): Boolean =
         newSuspendedTransaction {
             PersonTable.deleteWhere { PersonTable.tmdbId eq tmdbId } > 0
+        }
+
+    override suspend fun updateDepartment(
+        tmdbId: Int,
+        department: Department,
+    ): Boolean =
+        newSuspendedTransaction {
+            val updateCount =
+                PersonTable.update({ PersonTable.tmdbId eq tmdbId }) {
+                    it[PersonTable.department] = department
+                }
+            updateCount > 0
         }
 }

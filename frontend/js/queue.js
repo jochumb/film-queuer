@@ -3,6 +3,7 @@ import { displayQueues, displayQueuePreviews, showFilmManagementPage, displayFil
 import { setupQueueDragAndDrop, setupQueueListDragAndDrop } from './dragdrop.js';
 import { navigateToManage } from './navigation.js';
 import { notifications } from './notifications.js';
+import { translateDepartmentToRole } from './search.js';
 
 let allFilms = [];
 let averageVoteCount = 0;
@@ -66,7 +67,7 @@ function showFilmManagementPageInternal() {
     const personName = sessionStorage.getItem('currentPersonName');
     const department = sessionStorage.getItem('currentDepartment');
     
-    showFilmManagementPage(queueId, personName, department);
+    showFilmManagementPage(queueId, personName);
     
     // Load person's films from TMDB and current queue films
     loadPersonFilms(personTmdbId, department);
@@ -80,6 +81,11 @@ async function loadPersonFilms(personTmdbId, department) {
         personFilmsContainer.innerHTML = '<p>Loading films...</p>';
         
         const data = await api.getPersonFilmography(personTmdbId, department);
+        
+        // Handle available departments for department switching
+        if (data.availableDepartments && data.availableDepartments.length > 1) {
+            displayDepartmentSelector(data.availableDepartments, department, personTmdbId);
+        }
         
         if (data.films && data.films.length > 0) {
             // Store all films globally for filtering, sorted by release date (oldest first)
@@ -244,6 +250,72 @@ export async function removeFilmFromQueue(filmId, filmTitle) {
     } catch (error) {
         console.error('Error removing film from queue:', error);
         notifications.error('Failed to remove film from queue. Please try again.');
+    }
+}
+
+function displayDepartmentSelector(availableDepartments, currentDepartment, personTmdbId) {
+    const placeholder = document.querySelector('.department-selector-placeholder');
+    if (!placeholder) return;
+    
+    placeholder.innerHTML = `
+        <div class="department-selector">
+            <label for="departmentSelect">Department:</label>
+            <select id="departmentSelect" class="department-dropdown">
+                ${availableDepartments.map(dept => `
+                    <option value="${dept}" ${dept === currentDepartment ? 'selected' : ''}>${translateDepartmentToRole(dept)}</option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    
+    // Add event listener for department change
+    const select = placeholder.querySelector('#departmentSelect');
+    select.addEventListener('change', function() {
+        const newDepartment = this.value;
+        if (newDepartment !== currentDepartment) {
+            changeDepartment(newDepartment, personTmdbId);
+        }
+    });
+}
+
+async function changeDepartment(newDepartment, personTmdbId) {
+    try {
+        // Update the person's department in the backend
+        const response = await api.updatePersonDepartment(personTmdbId, newDepartment);
+        
+        if (response.ok) {
+            // Update session storage
+            sessionStorage.setItem('currentDepartment', newDepartment);
+            
+            // Update the page header
+            updatePageHeader(sessionStorage.getItem('currentPersonName'));
+            
+            // Reload the filmography with the new department
+            loadPersonFilms(personTmdbId, newDepartment);
+            
+            // Show success notification
+            if (window.notifications) {
+                notifications.success(`Department changed to ${newDepartment}`);
+            }
+        } else {
+            console.error('Failed to update department');
+            if (window.notifications) {
+                notifications.error('Failed to update department');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating department:', error);
+        if (window.notifications) {
+            notifications.error('Error updating department');
+        }
+    }
+}
+
+function updatePageHeader(personName) {
+    const pageTitle = document.querySelector('header h1');
+    
+    if (pageTitle) {
+        pageTitle.textContent = `${personName}'s Films`;
     }
 }
 

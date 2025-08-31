@@ -3,7 +3,7 @@ package me.jochum.filmqueuer.adapters.persistence
 import me.jochum.filmqueuer.domain.Film
 import me.jochum.filmqueuer.domain.FilmRepository
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
@@ -11,7 +11,7 @@ import org.jetbrains.exposed.sql.update
 class MySqlFilmRepository : FilmRepository {
     override suspend fun save(film: Film): Film =
         newSuspendedTransaction {
-            FilmTable.insert {
+            FilmTable.insertIgnore {
                 it[tmdbId] = film.tmdbId
                 it[title] = film.title
                 it[originalTitle] = film.originalTitle

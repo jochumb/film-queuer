@@ -19,6 +19,7 @@ import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.Department
 import me.jochum.filmqueuer.domain.Person
 import me.jochum.filmqueuer.domain.PersonQueue
+import me.jochum.filmqueuer.domain.PersonRepository
 import me.jochum.filmqueuer.domain.PersonSelectionResult
 import me.jochum.filmqueuer.domain.PersonSelectionService
 import org.junit.jupiter.api.BeforeEach
@@ -30,11 +31,13 @@ import kotlin.test.assertTrue
 class PersonControllerTest {
     private lateinit var tmdbService: TmdbService
     private lateinit var personSelectionService: PersonSelectionService
+    private lateinit var personRepository: PersonRepository
 
     @BeforeEach
     fun setup() {
         tmdbService = mockk()
         personSelectionService = mockk()
+        personRepository = mockk()
     }
 
     @Test
@@ -74,7 +77,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
                 }
             }
 
@@ -94,7 +97,7 @@ class PersonControllerTest {
         testApplication {
             application {
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
                 }
             }
 
@@ -137,7 +140,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
                 }
             }
 
@@ -188,7 +191,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
                 }
             }
 
@@ -212,7 +215,7 @@ class PersonControllerTest {
 
             application {
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
                 }
             }
 
@@ -233,7 +236,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
                 }
             }
 

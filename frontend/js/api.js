@@ -99,5 +99,18 @@ export const api = {
     async getQueuePreviews(limit = 9, filmsLimit = 3) {
         const response = await fetch(`${API_BASE}/queues/previews?limit=${limit}&filmsLimit=${filmsLimit}`);
         return response.json();
+    },
+
+    async updatePersonDepartment(personTmdbId, department) {
+        const response = await fetch(`${API_BASE}/persons/${personTmdbId}/department`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                department: department
+            })
+        });
+        return response;
     }
 };

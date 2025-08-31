@@ -8,4 +8,9 @@ interface PersonRepository {
     suspend fun findAll(): List<Person>
 
     suspend fun deleteByTmdbId(tmdbId: Int): Boolean
+
+    suspend fun updateDepartment(
+        tmdbId: Int,
+        department: Department,
+    ): Boolean
 }

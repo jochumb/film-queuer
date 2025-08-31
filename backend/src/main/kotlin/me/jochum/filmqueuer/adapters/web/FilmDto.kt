@@ -19,4 +19,5 @@ data class FilmDto(
 @Serializable
 data class FilmographyDto(
     val films: List<FilmDto>,
+    val availableDepartments: List<String>,
 )

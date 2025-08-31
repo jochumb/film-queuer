@@ -94,7 +94,6 @@ export function showHomePage() {
     document.querySelector('.container').innerHTML = `
         <header>
             <h1>Film Queuer</h1>
-            <p>Discover and queue films from your favorite actors and directors</p>
         </header>
         <main class="home-page">
             <section class="queue-previews-section">
@@ -115,7 +114,6 @@ export function showManagePage() {
         <header>
             <div class="header-content">
                 <h1>Queue Management</h1>
-                <p>Search for people and manage your film queues</p>
             </div>
             <button class="back-button" onclick="navigateToHome()">← Back to Home</button>
         </header>
@@ -136,12 +134,11 @@ export function showManagePage() {
     `;
 }
 
-export function showFilmManagementPage(queueId, personName, department) {
+export function showFilmManagementPage(queueId, personName) {
     document.querySelector('.container').innerHTML = `
         <header>
             <div class="header-content">
                 <h1>${personName}'s Films</h1>
-                <p class="queue-subtitle">${translateDepartmentToRole(department)} • Queue ID: ${queueId.substring(0, 8)}...</p>
             </div>
             <button class="back-button" onclick="navigateToManage()">← Back to Queue Management</button>
         </header>
@@ -167,7 +164,7 @@ export function showFilmManagementPage(queueId, personName, department) {
                     <div class="filmography-header">
                         <div class="filmography-title">
                             <h2>Browse Filmography</h2>
-                            <p>Select films to add to your queue:</p>
+                            <div class="department-selector-placeholder"></div>
                         </div>
                         <div class="vote-filter-inline">
                             <label for="voteFilter">Min votes: <span id="votePercentage">10</span>%</label>

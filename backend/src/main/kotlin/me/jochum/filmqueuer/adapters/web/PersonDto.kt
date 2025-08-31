@@ -38,3 +38,8 @@ data class PersonSelectionResponseDto(
     val person: SavedPersonDto,
     val queueId: String,
 )
+
+@Serializable
+data class UpdateDepartmentDto(
+    val department: String,
+)

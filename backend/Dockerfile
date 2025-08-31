@@ -14,6 +14,8 @@ COPY backend/gradle.properties ./backend/
 COPY backend/src ./backend/src
 
 RUN chmod +x ./gradlew
+RUN ./gradlew --version
+
 RUN ./gradlew :backend:build --no-daemon
 
 EXPOSE 8080
