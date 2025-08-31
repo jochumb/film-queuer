@@ -10,7 +10,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import me.jochum.filmqueuer.domain.Film
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
 import me.jochum.filmqueuer.domain.QueueFilmService
@@ -101,15 +100,7 @@ fun Route.configureQueueRoutes(
                 val queueId = UUID.fromString(queueIdString)
                 val filmRequest = call.receive<FilmRequestDto>()
 
-                val film =
-                    Film(
-                        tmdbId = filmRequest.tmdbId,
-                        title = filmRequest.title,
-                        originalTitle = filmRequest.originalTitle,
-                        releaseDate = filmRequest.releaseDate.toLocalDate(),
-                    )
-
-                queueFilmService.addFilmToQueue(queueId, film)
+                queueFilmService.addFilmToQueue(queueId, filmRequest.tmdbId)
                 call.respond(HttpStatusCode.Created, "Film added to queue successfully")
             } catch (e: IllegalArgumentException) {
                 call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
@@ -138,6 +129,9 @@ fun Route.configureQueueRoutes(
                                     title = film.title,
                                     originalTitle = film.originalTitle,
                                     releaseDate = film.releaseDate.toDateString(),
+                                    runtime = film.runtime,
+                                    genres = film.genres,
+                                    posterPath = film.posterPath,
                                 )
                             },
                     )
@@ -245,6 +239,9 @@ fun Route.configureQueueRoutes(
                                     title = film.title,
                                     originalTitle = film.originalTitle,
                                     releaseDate = film.releaseDate.toDateString(),
+                                    runtime = film.runtime,
+                                    genres = film.genres,
+                                    posterPath = film.posterPath,
                                 )
                             }
 

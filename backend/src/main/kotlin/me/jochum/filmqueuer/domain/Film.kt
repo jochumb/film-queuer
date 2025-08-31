@@ -7,4 +7,7 @@ data class Film(
     val title: String,
     val originalTitle: String? = null,
     val releaseDate: LocalDate? = null,
+    val runtime: Int? = null,
+    val genres: String? = null,
+    val posterPath: String? = null,
 )

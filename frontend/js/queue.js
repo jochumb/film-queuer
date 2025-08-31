@@ -191,10 +191,7 @@ export async function addFilmToQueue(filmId, filmTitle) {
         }
 
         const response = await api.addFilmToQueue(queueId, {
-            tmdbId: film.id,
-            title: film.title,
-            originalTitle: film.originalTitle,
-            releaseDate: film.releaseDate
+            tmdbId: film.id
         });
 
         if (response.ok) {

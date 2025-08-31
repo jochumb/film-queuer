@@ -5,9 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FilmRequestDto(
     val tmdbId: Int,
-    val title: String,
-    val originalTitle: String? = null,
-    val releaseDate: String? = null,
 )
 
 @Serializable
@@ -21,6 +18,9 @@ data class FilmResponseDto(
     val title: String,
     val originalTitle: String? = null,
     val releaseDate: String? = null,
+    val runtime: Int? = null,
+    val genres: String? = null,
+    val posterPath: String? = null,
 )
 
 @Serializable

@@ -95,3 +95,23 @@ data class TmdbCrewCredit(
     val job: String? = null,
     val department: String? = null,
 )
+
+@Serializable
+data class TmdbMovieDetails(
+    val id: Int,
+    val title: String,
+    @SerialName("original_title")
+    val originalTitle: String? = null,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+    val runtime: Int? = null,
+    val genres: List<TmdbGenre> = emptyList(),
+    @SerialName("poster_path")
+    val posterPath: String? = null,
+)
+
+@Serializable
+data class TmdbGenre(
+    val id: Int,
+    val name: String,
+)

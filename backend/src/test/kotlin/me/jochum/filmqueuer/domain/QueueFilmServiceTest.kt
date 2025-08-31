@@ -4,6 +4,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
@@ -16,13 +17,15 @@ import kotlin.test.assertTrue
 class QueueFilmServiceTest {
     private lateinit var filmRepository: FilmRepository
     private lateinit var queueFilmRepository: QueueFilmRepository
+    private lateinit var tmdbService: TmdbService
     private lateinit var service: QueueFilmService
 
     @BeforeEach
     fun setup() {
         filmRepository = mockk()
         queueFilmRepository = mockk()
-        service = QueueFilmService(filmRepository, queueFilmRepository)
+        tmdbService = mockk()
+        service = QueueFilmService(filmRepository, queueFilmRepository, tmdbService)
     }
 
     @Test
@@ -30,19 +33,21 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
+            val tmdbId = 550
             val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
-            val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
 
-            coEvery { filmRepository.save(film) } returns film
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) } returns queueFilm
+            coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
+            coEvery { filmRepository.save(any()) } returns film
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
 
             // When
-            val result = service.addFilmToQueue(queueId, film)
+            val result = service.addFilmToQueue(queueId, tmdbId)
 
             // Then
             assertEquals(queueFilm, result)
-            coVerify { filmRepository.save(film) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) }
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
         }
 
     @Test
@@ -50,19 +55,21 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
+            val tmdbId = 550
             val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
-            val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
 
-            coEvery { filmRepository.save(film) } returns film // insertIgnore handles duplicates
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) } returns queueFilm
+            coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
+            coEvery { filmRepository.save(any()) } returns film // replace handles duplicates
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
 
             // When
-            val result = service.addFilmToQueue(queueId, film)
+            val result = service.addFilmToQueue(queueId, tmdbId)
 
             // Then
             assertEquals(queueFilm, result)
-            coVerify { filmRepository.save(film) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) }
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
         }
 
     @Test
@@ -175,22 +182,24 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
+            val tmdbId = 550
             val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
             val exception = RuntimeException("Database error")
 
-            coEvery { filmRepository.save(film) } returns film
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) } throws exception
+            coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
+            coEvery { filmRepository.save(any()) } returns film
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } throws exception
 
             // When & Then
             try {
-                service.addFilmToQueue(queueId, film)
+                service.addFilmToQueue(queueId, tmdbId)
                 assertTrue(false, "Expected exception to be thrown")
             } catch (e: RuntimeException) {
                 assertEquals("Database error", e.message)
             }
 
-            coVerify { filmRepository.save(film) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, film.tmdbId) }
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
         }
 
     @Test
@@ -270,20 +279,21 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+            val tmdbId = 550
             val exception = RuntimeException("Film save failed")
 
-            coEvery { filmRepository.save(film) } throws exception
+            coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
+            coEvery { filmRepository.save(any()) } throws exception
 
             // When & Then
             try {
-                service.addFilmToQueue(queueId, film)
+                service.addFilmToQueue(queueId, tmdbId)
                 assertTrue(false, "Expected exception to be thrown")
             } catch (e: RuntimeException) {
                 assertEquals("Film save failed", e.message)
             }
 
-            coVerify { filmRepository.save(film) }
+            coVerify { filmRepository.save(any()) }
             coVerify(exactly = 0) { queueFilmRepository.addFilmToQueue(any(), any()) }
         }
 }

@@ -22,7 +22,7 @@ fun Application.configureRouting() {
     val filmRepository = MySqlFilmRepository()
     val queueFilmRepository = MySqlQueueFilmRepository()
     val personSelectionService = PersonSelectionService(personRepository, queueRepository)
-    val queueFilmService = QueueFilmService(filmRepository, queueFilmRepository)
+    val queueFilmService = QueueFilmService(filmRepository, queueFilmRepository, tmdbService)
 
     routing {
         get("/") {

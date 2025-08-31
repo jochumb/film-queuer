@@ -326,7 +326,7 @@ class QueueControllerTest {
                 )
             val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
 
-            coEvery { queueFilmService.addFilmToQueue(queueId, film) } returns queueFilm
+            coEvery { queueFilmService.addFilmToQueue(queueId, 550) } returns queueFilm
 
             application {
                 configureSerialization()
@@ -342,10 +342,7 @@ class QueueControllerTest {
                     setBody(
                         """
                         {
-                            "tmdbId": 550,
-                            "title": "Fight Club",
-                            "originalTitle": "Fight Club",
-                            "releaseDate": "1999-10-15"
+                            "tmdbId": 550
                         }
                         """.trimIndent(),
                     )
@@ -355,7 +352,7 @@ class QueueControllerTest {
             assertEquals(HttpStatusCode.Created, response.status)
             assertTrue(response.bodyAsText().contains("Film added to queue successfully"))
 
-            coVerify { queueFilmService.addFilmToQueue(queueId, film) }
+            coVerify { queueFilmService.addFilmToQueue(queueId, 550) }
         }
 
     @Test
@@ -372,7 +369,7 @@ class QueueControllerTest {
             val response =
                 client.post("/queues/invalid-uuid/films") {
                     contentType(ContentType.Application.Json)
-                    setBody("""{"tmdbId": 550, "title": "Fight Club"}""")
+                    setBody("""{"tmdbId": 550}""")
                 }
 
             // Then
@@ -475,7 +472,7 @@ class QueueControllerTest {
             val response =
                 client.post("/queues/$queueId/films") {
                     contentType(ContentType.Application.Json)
-                    setBody("""{"tmdbId": 550, "title": "Fight Club"}""")
+                    setBody("""{"tmdbId": 550}""")
                 }
 
             // Then

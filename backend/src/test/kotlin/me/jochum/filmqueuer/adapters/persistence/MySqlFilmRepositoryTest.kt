@@ -59,21 +59,22 @@ class MySqlFilmRepositoryTest {
         }
 
     @Test
-    fun `save should handle duplicate tmdbId with insertIgnore`() =
+    fun `save should handle duplicate tmdbId with replace`() =
         runBlocking {
             // Given
             val film1 = Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15))
-            val film2 = Film(550, "Different Title", null, LocalDate.of(2000, 1, 1))
+            val film2 = Film(550, "Updated Title", "Updated Original", LocalDate.of(2000, 1, 1))
 
             // When
             repository.save(film1)
-            repository.save(film2) // Should not override
+            repository.save(film2) // Should replace the existing record
 
             // Then
             val found = repository.findByTmdbId(550)
             assertNotNull(found)
-            assertEquals(film1.title, found.title) // Should keep original
-            assertEquals(film1.releaseDate, found.releaseDate)
+            assertEquals(film2.title, found.title) // Should have updated title
+            assertEquals(film2.originalTitle, found.originalTitle) // Should have updated original title
+            assertEquals(film2.releaseDate, found.releaseDate) // Should have updated release date
         }
 
     @Test

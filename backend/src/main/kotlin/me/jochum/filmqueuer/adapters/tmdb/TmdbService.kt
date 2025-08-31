@@ -6,4 +6,6 @@ interface TmdbService {
     suspend fun getPersonMovieCredits(personId: Int): TmdbPersonCreditsResponse
 
     suspend fun getPersonDetails(personId: Int): TmdbPerson
+
+    suspend fun getMovieDetails(movieId: Int): TmdbMovieDetails
 }

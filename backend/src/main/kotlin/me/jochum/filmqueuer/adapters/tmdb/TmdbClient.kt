@@ -45,6 +45,12 @@ class TmdbClient : TmdbService {
         }.body()
     }
 
+    override suspend fun getMovieDetails(movieId: Int): TmdbMovieDetails {
+        return httpClient.get("$baseUrl/movie/$movieId") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+        }.body()
+    }
+
     fun close() {
         httpClient.close()
     }
