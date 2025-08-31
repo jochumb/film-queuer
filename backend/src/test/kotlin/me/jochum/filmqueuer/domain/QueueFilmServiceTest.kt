@@ -34,7 +34,7 @@ class QueueFilmServiceTest {
             // Given
             val queueId = UUID.randomUUID()
             val tmdbId = 550
-            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+            val film = Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), 139, listOf("Drama", "Thriller"), "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg")
             val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
 
             coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
@@ -56,7 +56,7 @@ class QueueFilmServiceTest {
             // Given
             val queueId = UUID.randomUUID()
             val tmdbId = 550
-            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+            val film = Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), 139, listOf("Drama", "Thriller"), "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg")
             val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
 
             coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
@@ -113,8 +113,8 @@ class QueueFilmServiceTest {
             val queueId = UUID.randomUUID()
             val expectedFilms =
                 listOf(
-                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15)),
-                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), 139, listOf("Drama", "Thriller"), "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"),
+                    Film(13, "Forrest Gump", "Forrest Gump", LocalDate.of(1994, 7, 6), 142, listOf("Drama", "Romance"), "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg"),
                 )
 
             coEvery { queueFilmRepository.findFilmsByQueueId(queueId) } returns expectedFilms
@@ -183,7 +183,7 @@ class QueueFilmServiceTest {
             // Given
             val queueId = UUID.randomUUID()
             val tmdbId = 550
-            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15))
+            val film = Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), 139, listOf("Drama", "Thriller"), "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg")
             val exception = RuntimeException("Database error")
 
             coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)

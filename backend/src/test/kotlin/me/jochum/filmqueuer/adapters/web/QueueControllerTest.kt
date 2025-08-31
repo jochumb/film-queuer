@@ -323,6 +323,9 @@ class QueueControllerTest {
                     title = "Fight Club",
                     originalTitle = "Fight Club",
                     releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = null,
+                    genres = null,
+                    posterPath = null,
                 )
             val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
 
@@ -384,8 +387,8 @@ class QueueControllerTest {
             val queueId = UUID.randomUUID()
             val films =
                 listOf(
-                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15)),
-                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6)),
+                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), null, null, null),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6), null, null, null),
                 )
 
             coEvery { queueFilmService.getQueueFilms(queueId) } returns films

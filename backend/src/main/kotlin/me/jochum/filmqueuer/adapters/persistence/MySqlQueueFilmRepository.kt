@@ -87,5 +87,8 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
             title = this[FilmTable.title],
             originalTitle = this[FilmTable.originalTitle],
             releaseDate = this[FilmTable.releaseDate],
+            runtime = this[FilmTable.runtime],
+            genres = this[FilmTable.genres]?.split(", ")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
+            posterPath = this[FilmTable.posterPath],
         )
 }

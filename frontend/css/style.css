@@ -1399,12 +1399,12 @@ main {
 }
 
 
-/* Film icons and improved layout */
+/* Film preview with poster and details */
 .preview-film-item {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
     border-bottom: 1px solid #f8f9fa;
     transition: all 0.2s ease;
 }
@@ -1413,32 +1413,67 @@ main {
     transform: translateX(4px);
 }
 
-.film-icon {
-    font-size: 1.2rem;
-    opacity: 0.7;
-    transition: all 0.2s ease;
+.film-poster {
+    flex-shrink: 0;
+    width: 50px;
+    height: 75px;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.preview-film-item:hover .film-icon {
-    opacity: 1;
-    transform: scale(1.1);
+.poster-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.placeholder-poster {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    color: #6c757d;
+    font-size: 1.2rem;
+}
+
+.film-details {
+    flex: 1;
+    min-width: 0;
 }
 
 .film-title-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex: 1;
+    display: block;
     text-decoration: none;
     color: inherit;
-    transition: all 0.2s ease;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    margin: -0.25rem -0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .film-title-link:hover {
-    background-color: #f8f9fa;
+    color: #3498db;
+}
+
+.film-title {
+    color: #2c3e50;
+    font-weight: 500;
+    font-size: 0.9rem;
+    line-height: 1.3;
+    display: block;
+    margin-bottom: 0.125rem;
+}
+
+.film-year {
+    color: #6c757d;
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+.film-runtime {
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
 }
 
 /* Enhanced empty state */

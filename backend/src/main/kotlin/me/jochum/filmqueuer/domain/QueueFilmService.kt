@@ -27,8 +27,8 @@ class QueueFilmService(
         return try {
             val tmdbDetails = tmdbService.getMovieDetails(tmdbId)
 
-            // Convert genres list to comma-separated string
-            val genresString = tmdbDetails.genres.joinToString(", ") { it.name }
+            // Convert genres list
+            val genresList = tmdbDetails.genres.map { it.name }.takeIf { it.isNotEmpty() }
 
             // Build full poster URL if posterPath is available
             val fullPosterPath = tmdbDetails.posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
@@ -39,7 +39,7 @@ class QueueFilmService(
                 originalTitle = tmdbDetails.originalTitle,
                 releaseDate = tmdbDetails.releaseDate?.let { LocalDate.parse(it) },
                 runtime = tmdbDetails.runtime,
-                genres = genresString.takeIf { it.isNotBlank() },
+                genres = genresList,
                 posterPath = fullPosterPath,
             )
         } catch (e: Exception) {

@@ -19,7 +19,7 @@ data class FilmResponseDto(
     val originalTitle: String? = null,
     val releaseDate: String? = null,
     val runtime: Int? = null,
-    val genres: String? = null,
+    val genres: List<String>? = null,
     val posterPath: String? = null,
 )
 

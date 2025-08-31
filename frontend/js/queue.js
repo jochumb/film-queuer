@@ -24,7 +24,7 @@ export async function loadQueues() {
 
 export async function loadQueuePreviews() {
     try {
-        const data = await api.getQueuePreviews(9, 3);
+        const data = await api.getQueuePreviews(9, 2);
         displayQueuePreviews(data.previews);
     } catch (error) {
         console.error('Error loading queue previews:', error);

@@ -62,18 +62,26 @@ export function displayQueuePreviews(queuePreviews) {
                             const letterboxdUrl = `https://letterboxd.com/tmdb/${film.tmdbId}/`;
                             return `
                                 <div class="preview-film-item">
-                                    <div class="film-icon">🎬</div>
-                                    <a href="${letterboxdUrl}" target="_blank" class="film-title-link" onclick="event.stopPropagation()">
-                                        <span class="film-title">${film.title}</span>
-                                        <span class="film-year">${film.releaseDate ? new Date(film.releaseDate).getFullYear() : 'N/A'}</span>
-                                    </a>
+                                    <div class="film-poster">
+                                        ${film.posterPath ? 
+                                            `<img src="${film.posterPath}" alt="${film.title}" class="poster-image">` :
+                                            `<div class="placeholder-poster">🎬</div>`
+                                        }
+                                    </div>
+                                    <div class="film-details">
+                                        <a href="${letterboxdUrl}" target="_blank" class="film-title-link" onclick="event.stopPropagation()">
+                                            <span class="film-title">${film.title}</span>
+                                            <span class="film-year">${film.releaseDate ? new Date(film.releaseDate).getFullYear() : 'N/A'}</span>
+                                        </a>
+                                        ${film.runtime ? `<div class="film-runtime">${film.runtime} min</div>` : ''}
+                                    </div>
                                 </div>
                             `;
                         }).join('') : 
                         '<div class="no-films"><div class="empty-icon">📽️</div><span>No films added yet</span></div>'
                     }
-                    ${queuePreview.totalFilms > 3 ? 
-                        `<div class="more-films">+${queuePreview.totalFilms - 3} more films</div>` : 
+                    ${queuePreview.totalFilms > 2 ? 
+                        `<div class="more-films">+${queuePreview.totalFilms - 2} more films</div>` : 
                         ''
                     }
                 </div>
