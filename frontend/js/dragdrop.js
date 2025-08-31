@@ -88,7 +88,8 @@ async function reorderQueueFilms(filmOrder) {
 }
 
 export function setupQueueListDragAndDrop() {
-    const queueItems = document.querySelectorAll('.queue-item');
+    // Only setup drag-and-drop for priority queues (in the first column)
+    const queueItems = document.querySelectorAll('#queuesList .queue-item');
     let draggedItem = null;
 
     queueItems.forEach(item => {
@@ -107,11 +108,16 @@ export function setupQueueListDragAndDrop() {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             
-            const afterElement = getDragAfterElementQueue(this.parentNode, e.clientY);
+            // Get the wrapper container (.queue-item-with-rank)
+            const draggedWrapper = draggedItem.closest('.queue-item-with-rank');
+            const targetWrapper = this.closest('.queue-item-with-rank');
+            const container = targetWrapper.parentNode;
+            
+            const afterElement = getDragAfterElementQueue(container, e.clientY);
             if (afterElement == null) {
-                this.parentNode.appendChild(draggedItem);
+                container.appendChild(draggedWrapper);
             } else {
-                this.parentNode.insertBefore(draggedItem, afterElement);
+                container.insertBefore(draggedWrapper, afterElement);
             }
         });
     });
@@ -138,7 +144,9 @@ export function setupQueueListDragAndDrop() {
 }
 
 function getDragAfterElementQueue(container, y) {
-    const draggableElements = [...container.querySelectorAll('.queue-item:not(.dragging)')];
+    const draggableElements = [...container.querySelectorAll('.queue-item-with-rank')].filter(el => 
+        !el.querySelector('.queue-item.dragging')
+    );
     
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();

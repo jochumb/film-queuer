@@ -253,7 +253,7 @@ main {
 }
 
 .saved-person-item {
-    padding: 0.8rem;
+    padding: 0.6rem;
     background-color: white;
     border-radius: 4px;
     border-left: 4px solid #27ae60;
@@ -343,9 +343,9 @@ main {
 .edit-indicator {
     position: absolute;
     right: 1rem;
-    top: 50%;
+    top: calc(50% + 3px);
     transform: translateY(-50%);
-    color: #3498db;
+    color: #95a5a6 !important;
     font-weight: bold;
     opacity: 0.7;
 }
@@ -1731,7 +1731,123 @@ main {
     color: #2980b9;
 }
 
+/* Priority Queues 2-Column Layout */
+.queues-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    min-height: 0;
+}
+
+.priority-queues-column, .non-priority-queues-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.column-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.column-header h4 {
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.priority-queues-column .saved-persons-list {
+    /* Priority queues remain draggable with existing styles */
+}
+
+.non-priority-queues-column .saved-persons-list {
+    /* Non-priority queues don't have drag functionality */
+}
+
+.queue-item.non-priority {
+    cursor: pointer;
+    /* Remove draggable cursor for non-priority items */
+}
+
+.queue-item.non-priority:hover {
+    background-color: #f8f9fa;
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.promote-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-right: 0.5rem;
+    margin-left: 4px;
+}
+
+.promote-btn:hover {
+    background-color: #2980b9;
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+.promote-btn:active {
+    transform: scale(0.95);
+}
+
+.queue-item-with-rank {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.queue-item-with-rank .queue-item {
+    flex: 1;
+}
+
+.queue-item-with-promote {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.queue-item-with-promote .queue-item {
+    flex: 1;
+}
+
+.drag-handle-spacer {
+    width: 14px;
+    padding: 0.75rem;
+    margin: -0.8rem 0 -0.8rem -0.8rem;
+    border-radius: 4px 0 0 4px;
+}
+
+
+.queue-rank {
+    color: #7f8c8d;
+    font-size: 2em;
+    font-weight: bold;
+    flex-shrink: 0;
+    min-width: 40px;
+    text-align: center;
+}
+
 @media (max-width: 768px) {
+    .queues-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
     .queue-previews-container {
         grid-template-columns: 1fr;
     }

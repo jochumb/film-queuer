@@ -319,6 +319,47 @@ function updatePageHeader(personName) {
     }
 }
 
+export async function promoteQueue(queueId) {
+    try {
+        // Get current queues to determine new order
+        const queues = await api.getQueues();
+        
+        // Find the queue to promote
+        const queueIndex = queues.findIndex(q => q.id === queueId);
+        if (queueIndex === -1) {
+            notifications.error('Queue not found');
+            return;
+        }
+        
+        // Remove the queue from its current position
+        const queueToPromote = queues.splice(queueIndex, 1)[0];
+        
+        // Insert the promoted queue at position 8 (9th position, lowest priority among priority queues)
+        // If there are fewer than 9 queues total, just add it at the end of the current list
+        const insertPosition = Math.min(8, queues.length);
+        queues.splice(insertPosition, 0, queueToPromote);
+        
+        // Create new order array with all queue IDs
+        const newOrder = queues.map(q => q.id);
+        
+        // Send reorder request to backend
+        const response = await api.reorderQueues(newOrder);
+        
+        if (response.ok) {
+            notifications.success(`"${queueToPromote.person?.name || 'Queue'}" promoted to priority queue!`);
+            // Reload the queues to reflect the change
+            loadQueues();
+        } else {
+            const errorText = await response.text();
+            notifications.error(`Failed to promote queue: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('Error promoting queue:', error);
+        notifications.error('Failed to promote queue. Please try again.');
+    }
+}
+
 // Make functions available globally for onclick handlers
 window.addFilmToQueue = addFilmToQueue;
 window.removeFilmFromQueue = removeFilmFromQueue;
+window.promoteQueue = promoteQueue;

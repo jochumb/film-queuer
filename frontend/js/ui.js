@@ -3,24 +3,72 @@ import { translateDepartmentToRole } from './search.js';
 export function displayQueues(queues) {
     const savedPersonsContainer = document.getElementById('savedPersons');
     if (queues.length > 0) {
+        // Split queues into priority (first 9) and non-priority (rest, alphabetically sorted)
+        const priorityQueues = queues.slice(0, 9);
+        const nonPriorityQueues = queues.slice(9).sort((a, b) => {
+            const nameA = a.person?.name || 'Unknown';
+            const nameB = b.person?.name || 'Unknown';
+            return nameA.localeCompare(nameB);
+        });
+
         savedPersonsContainer.innerHTML = `
-            <h3>Queue</h3>
-            <div class="saved-persons-list" id="queuesList">
-                ${queues.map(queue => `
-                    <div class="saved-person-item queue-item clickable" draggable="true" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
-                        <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
-                        <div class="queue-info">
-                            ${queue.person ? `
-                                <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
-                            ` : 'Unknown item'}
-                            <span class="edit-indicator">→</span>
+            <div class="queues-container">
+                <div class="priority-queues-column">
+                    <div class="column-header">
+                        <h4>Priority Queues</h4>
+                    </div>
+                    <div class="saved-persons-list" id="queuesList">
+                        ${priorityQueues.map((queue, index) => `
+                            <div class="queue-item-with-rank">
+                                <div class="queue-rank">${index + 1}</div>
+                                <div class="saved-person-item queue-item clickable" draggable="true" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
+                                    <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
+                                    <div class="queue-info">
+                                        ${queue.person ? `
+                                            <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
+                                        ` : 'Unknown item'}
+                                        <span class="edit-indicator"><i data-feather="edit-3"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                ${nonPriorityQueues.length > 0 ? `
+                    <div class="non-priority-queues-column">
+                        <div class="column-header">
+                            <h4>Other Queues (${nonPriorityQueues.length})</h4>
+                        </div>
+                        <div class="saved-persons-list" id="nonPriorityQueuesList">
+                            ${nonPriorityQueues.map(queue => `
+                                <div class="queue-item-with-promote">
+                                    <button class="promote-btn" onclick="event.stopPropagation(); promoteQueue('${queue.id}')" title="Move to priority queue">
+                                        <i data-feather="arrow-left"></i>
+                                    </button>
+                                    <div class="saved-person-item queue-item clickable non-priority" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
+                                        <div class="drag-handle-spacer"></div>
+                                        <div class="queue-info">
+                                            ${queue.person ? `
+                                                <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
+                                            ` : 'Unknown item'}
+                                            <span class="edit-indicator"><i data-feather="edit-3"></i></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
-                `).join('')}
+                ` : ''}
             </div>
         `;
     } else {
         savedPersonsContainer.innerHTML = '<h3>No queues yet</h3>';
+    }
+    
+    // Initialize Feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
     }
 }
 
