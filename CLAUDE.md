@@ -79,9 +79,11 @@ frontend/
 
 ### 2. Filmography Browse & Filter
 - Load person's complete filmography from TMDB
+- Department switching with dropdown selector for persons with multiple roles
 - Vote count filtering with adjustable threshold slider (% of average votes)
 - Hide films with 0 votes and films below threshold
 - Films ordered chronologically (oldest to newest)
+- Automatic film deduplication with role/job concatenation
 
 ### 3. Film Queue Management
 - Add/remove films from personal queues with toast notifications
@@ -97,11 +99,15 @@ frontend/
 - Visual feedback during queue operations
 
 ### 5. User Experience & Interface
+- **Consistent Navigation**: Unified header with tab-style navigation across all pages
+- **Compact Queue Previews**: Streamlined home page cards with film counts and optimized spacing
+- **Department Management**: Dynamic department switching based on person's actual TMDB credits
 - **Toast Notifications**: Modern, non-blocking success/error/warning messages
 - **Modal Confirmations**: Beautiful confirmation dialogs instead of browser alerts
 - **Auto-dismiss**: Success messages disappear automatically, errors persist until dismissed
 - **Responsive Design**: Mobile-friendly notifications and interactions
 - **Visual Feedback**: Hover states, drag indicators, and smooth animations
+- **Text Truncation**: Smart handling of long person names in queue previews
 
 ### 6. Database & Temporal Types
 - **Proper temporal types**: `Instant` for timestamps, `LocalDate` for dates
@@ -127,10 +133,12 @@ queue_films: queue_id (UUID), film_tmdb_id, added_at (TIMESTAMP), sort_order (IN
 ### Person Management
 - `GET /persons/search?q={query}` - Search TMDB persons
 - `POST /persons/select` - Save person and create queue
-- `GET /persons/{tmdbId}/filmography?department={dept}` - Get filmography
+- `GET /persons/{tmdbId}/filmography?department={dept}` - Get filmography with available departments
+- `PUT /persons/{tmdbId}/department` - Update person's department
 
 ### Queue Management  
 - `GET /queues` - List all queues with person data (ordered by sort_order)
+- `GET /queues/previews` - Get compact queue previews with film counts for home page
 - `GET /queues/{id}` - Get specific queue with person data
 - `GET /queues/{id}/films` - Get queue films (ordered by sort_order)
 - `POST /queues/{id}/films` - Add film to queue
