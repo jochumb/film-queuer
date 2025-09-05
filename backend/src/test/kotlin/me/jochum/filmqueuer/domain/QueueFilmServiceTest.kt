@@ -2,6 +2,7 @@ package me.jochum.filmqueuer.domain
 
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
@@ -338,5 +339,258 @@ class QueueFilmServiceTest {
 
             coVerify { filmRepository.save(any()) }
             coVerify(exactly = 0) { queueFilmRepository.addFilmToQueue(any(), any()) }
+        }
+
+    @Test
+    fun `addFilmToQueue should save TV show and add to queue`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val tmdbId = 1399
+            val tvShow =
+                Film(
+                    1399,
+                    "Game of Thrones",
+                    "Game of Thrones",
+                    LocalDate.of(2011, 4, 17),
+                    4560,
+                    listOf("Drama", "Action"),
+                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tv = true,
+                )
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+
+            val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
+            val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeason2 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeasonDetails1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeasonDetails>(relaxed = true)
+            val mockSeasonDetails2 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeasonDetails>(relaxed = true)
+            val mockEpisode1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbEpisode>(relaxed = true)
+            val mockEpisode2 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbEpisode>(relaxed = true)
+            val mockGenre = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbGenre>(relaxed = true)
+
+            every { mockTvDetails.name } returns "Game of Thrones"
+            every { mockTvDetails.originalName } returns "Game of Thrones"
+            every { mockTvDetails.firstAirDate } returns "2011-04-17"
+            every { mockTvDetails.posterPath } returns "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg"
+            every { mockTvDetails.genres } returns listOf(mockGenre)
+            every { mockTvDetails.seasons } returns listOf(mockSeason1, mockSeason2)
+            every { mockGenre.name } returns "Drama"
+            every { mockSeason1.seasonNumber } returns 1
+            every { mockSeason2.seasonNumber } returns 2
+            every { mockSeasonDetails1.episodes } returns listOf(mockEpisode1, mockEpisode2)
+            every { mockSeasonDetails2.episodes } returns listOf(mockEpisode1)
+            every { mockEpisode1.runtime } returns 60
+            every { mockEpisode2.runtime } returns 50
+
+            coEvery { tmdbService.getTvDetails(tmdbId) } returns mockTvDetails
+            coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
+            coEvery { tmdbService.getTvSeasonDetails(tmdbId, 2) } returns mockSeasonDetails2
+            coEvery { filmRepository.save(any()) } returns tvShow
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+
+            // When
+            val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
+
+            // Then
+            assertEquals(queueFilm, result)
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { tmdbService.getTvDetails(tmdbId) }
+            coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
+            coVerify { tmdbService.getTvSeasonDetails(tmdbId, 2) }
+        }
+
+    @Test
+    fun `addFilmToQueue should handle TV show with missing runtime data`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val tmdbId = 1399
+            val tvShow =
+                Film(
+                    1399,
+                    "Game of Thrones",
+                    "Game of Thrones",
+                    LocalDate.of(2011, 4, 17),
+                    null,
+                    listOf("Drama"),
+                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tv = true,
+                )
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+
+            val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
+            val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeasonDetails1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeasonDetails>(relaxed = true)
+            val mockEpisode1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbEpisode>(relaxed = true)
+            val mockGenre = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbGenre>(relaxed = true)
+
+            every { mockTvDetails.name } returns "Game of Thrones"
+            every { mockTvDetails.originalName } returns "Game of Thrones"
+            every { mockTvDetails.firstAirDate } returns "2011-04-17"
+            every { mockTvDetails.posterPath } returns "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg"
+            every { mockTvDetails.genres } returns listOf(mockGenre)
+            every { mockTvDetails.seasons } returns listOf(mockSeason1)
+            every { mockGenre.name } returns "Drama"
+            every { mockSeason1.seasonNumber } returns 1
+            every { mockSeasonDetails1.episodes } returns listOf(mockEpisode1)
+            every { mockEpisode1.runtime } returns null
+
+            coEvery { tmdbService.getTvDetails(tmdbId) } returns mockTvDetails
+            coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
+            coEvery { filmRepository.save(any()) } returns tvShow
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+
+            // When
+            val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
+
+            // Then
+            assertEquals(queueFilm, result)
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+        }
+
+    @Test
+    fun `addFilmToQueue should handle TV show season fetch failure gracefully`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val tmdbId = 1399
+            val tvShow =
+                Film(
+                    1399,
+                    "Game of Thrones",
+                    "Game of Thrones",
+                    LocalDate.of(2011, 4, 17),
+                    60,
+                    listOf("Drama"),
+                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tv = true,
+                )
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+
+            val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
+            val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeason2 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeasonDetails1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeasonDetails>(relaxed = true)
+            val mockEpisode1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbEpisode>(relaxed = true)
+            val mockGenre = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbGenre>(relaxed = true)
+
+            every { mockTvDetails.name } returns "Game of Thrones"
+            every { mockTvDetails.originalName } returns "Game of Thrones"
+            every { mockTvDetails.firstAirDate } returns "2011-04-17"
+            every { mockTvDetails.posterPath } returns "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg"
+            every { mockTvDetails.genres } returns listOf(mockGenre)
+            every { mockTvDetails.seasons } returns listOf(mockSeason1, mockSeason2)
+            every { mockGenre.name } returns "Drama"
+            every { mockSeason1.seasonNumber } returns 1
+            every { mockSeason2.seasonNumber } returns 2
+            every { mockSeasonDetails1.episodes } returns listOf(mockEpisode1)
+            every { mockEpisode1.runtime } returns 60
+
+            coEvery { tmdbService.getTvDetails(tmdbId) } returns mockTvDetails
+            coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
+            coEvery { tmdbService.getTvSeasonDetails(tmdbId, 2) } throws RuntimeException("Season not found")
+            coEvery { filmRepository.save(any()) } returns tvShow
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+
+            // When
+            val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
+
+            // Then
+            assertEquals(queueFilm, result)
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
+            coVerify { tmdbService.getTvSeasonDetails(tmdbId, 2) }
+        }
+
+    @Test
+    fun `addFilmToQueue should create fallback TV show when TMDB fetch fails`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val tmdbId = 1399
+            val fallbackTvShow =
+                Film(
+                    1399,
+                    "Unknown TV Show",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    tv = true,
+                )
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+
+            coEvery { tmdbService.getTvDetails(tmdbId) } throws RuntimeException("TMDB API error")
+            coEvery { filmRepository.save(any()) } returns fallbackTvShow
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+
+            // When
+            val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
+
+            // Then
+            assertEquals(queueFilm, result)
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+        }
+
+    @Test
+    fun `addFilmToQueue should filter out season 0 specials when calculating TV runtime`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val tmdbId = 1399
+            val tvShow =
+                Film(
+                    1399,
+                    "Game of Thrones",
+                    "Game of Thrones",
+                    LocalDate.of(2011, 4, 17),
+                    120,
+                    listOf("Drama"),
+                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tv = true,
+                )
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+
+            val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
+            val mockSpecialsSeason = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
+            val mockSeasonDetails1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeasonDetails>(relaxed = true)
+            val mockEpisode1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbEpisode>(relaxed = true)
+            val mockEpisode2 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbEpisode>(relaxed = true)
+            val mockGenre = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbGenre>(relaxed = true)
+
+            every { mockTvDetails.name } returns "Game of Thrones"
+            every { mockTvDetails.originalName } returns "Game of Thrones"
+            every { mockTvDetails.firstAirDate } returns "2011-04-17"
+            every { mockTvDetails.posterPath } returns "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg"
+            every { mockTvDetails.genres } returns listOf(mockGenre)
+            every { mockTvDetails.seasons } returns listOf(mockSpecialsSeason, mockSeason1)
+            every { mockGenre.name } returns "Drama"
+            every { mockSpecialsSeason.seasonNumber } returns 0
+            every { mockSeason1.seasonNumber } returns 1
+            every { mockSeasonDetails1.episodes } returns listOf(mockEpisode1, mockEpisode2)
+            every { mockEpisode1.runtime } returns 60
+            every { mockEpisode2.runtime } returns 60
+
+            coEvery { tmdbService.getTvDetails(tmdbId) } returns mockTvDetails
+            coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
+            coEvery { filmRepository.save(any()) } returns tvShow
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+
+            // When
+            val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
+
+            // Then
+            assertEquals(queueFilm, result)
+            coVerify { filmRepository.save(any()) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
+            coVerify(exactly = 0) { tmdbService.getTvSeasonDetails(tmdbId, 0) }
         }
 }

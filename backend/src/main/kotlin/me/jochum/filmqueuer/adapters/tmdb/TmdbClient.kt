@@ -33,6 +33,20 @@ class TmdbClient : TmdbService {
         }.body()
     }
 
+    override suspend fun searchMovies(query: String): TmdbMovieSearchResponse {
+        return httpClient.get("$baseUrl/search/movie") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+            parameter("query", query)
+        }.body()
+    }
+
+    override suspend fun searchTv(query: String): TmdbTvSearchResponse {
+        return httpClient.get("$baseUrl/search/tv") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+            parameter("query", query)
+        }.body()
+    }
+
     override suspend fun getPersonMovieCredits(personId: Int): TmdbPersonCreditsResponse {
         return httpClient.get("$baseUrl/person/$personId/movie_credits") {
             header(HttpHeaders.Authorization, "Bearer $apiKey")
@@ -47,6 +61,21 @@ class TmdbClient : TmdbService {
 
     override suspend fun getMovieDetails(movieId: Int): TmdbMovieDetails {
         return httpClient.get("$baseUrl/movie/$movieId") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+        }.body()
+    }
+
+    override suspend fun getTvDetails(tvId: Int): TmdbTvDetails {
+        return httpClient.get("$baseUrl/tv/$tvId") {
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+        }.body()
+    }
+
+    override suspend fun getTvSeasonDetails(
+        tvId: Int,
+        seasonNumber: Int,
+    ): TmdbSeasonDetails {
+        return httpClient.get("$baseUrl/tv/$tvId/season/$seasonNumber") {
             header(HttpHeaders.Authorization, "Bearer $apiKey")
         }.body()
     }

@@ -11,6 +11,7 @@ object FilmTable : Table("films") {
     val runtime = integer("runtime").nullable()
     val genres = varchar("genres", 500).nullable()
     val posterPath = varchar("poster_path", 500).nullable()
+    val tv = bool("tv").default(false)
 
     override val primaryKey = PrimaryKey(tmdbId)
 }

@@ -231,14 +231,47 @@ export function showFilmManagementPage(queueId, personName) {
             <div class="right-column">
                 <div class="person-films-section">
                     <div class="filmography-header">
-                        <div class="filmography-title">
-                            <h2>Browse Filmography</h2>
-                            <div class="department-selector-placeholder"></div>
+                        <h2>Browse Films</h2>
+                        <div class="filmography-tabs">
+                            <button class="tab-button active" data-tab="filmography" onclick="switchFilmTab('filmography')">
+                                <span class="tab-text">Filmography</span>
+                            </button>
+                            <button class="tab-button" data-tab="search-movies" onclick="switchFilmTab('search-movies')">
+                                <span class="tab-text">Search Movies</span>
+                            </button>
+                            <button class="tab-button" data-tab="search-tv" onclick="switchFilmTab('search-tv')">
+                                <span class="tab-text">Search TV</span>
+                            </button>
                         </div>
-                        <div class="vote-filter-inline">
-                            <label for="voteFilter">Min votes: <span id="votePercentage">10</span>%</label>
-                            <input type="range" id="voteFilter" min="0" max="100" value="10" class="vote-slider-inline">
-                            <p class="filter-info-inline" id="filterInfo">Loading...</p>
+                        <div class="tab-content">
+                            <div class="filmography-content tab-panel active" data-content="filmography">
+                                <div class="filmography-controls">
+                                    <div class="department-selector-placeholder"></div>
+                                    <div class="vote-filter-inline">
+                                        <label for="voteFilter">Min votes: <span id="votePercentage">10</span>%</label>
+                                        <input type="range" id="voteFilter" min="0" max="100" value="10" class="vote-slider-inline">
+                                        <p class="filter-info-inline" id="filterInfo">Loading...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="search-movies-content tab-panel" data-content="search-movies">
+                                <div class="movie-search-container">
+                                    <div class="search-input-group">
+                                        <input type="text" id="movieSearch" placeholder="Search for movies..." />
+                                        <button id="movieSearchButton">Search</button>
+                                    </div>
+                                    <div class="search-info" id="movieSearchInfo"></div>
+                                </div>
+                            </div>
+                            <div class="search-tv-content tab-panel" data-content="search-tv">
+                                <div class="tv-search-container">
+                                    <div class="search-input-group">
+                                        <input type="text" id="tvSearch" placeholder="Search for TV shows..." />
+                                        <button id="tvSearchButton">Search</button>
+                                    </div>
+                                    <div class="search-info" id="tvSearchInfo"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div id="personFilms" class="person-films-list">

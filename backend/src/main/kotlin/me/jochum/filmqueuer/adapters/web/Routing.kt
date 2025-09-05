@@ -30,7 +30,7 @@ fun Application.configureRouting() {
         }
 
         route("/api") {
-            configureFilmRoutes()
+            configureFilmRoutes(tmdbService)
             configurePersonRoutes(tmdbService, personSelectionService, personRepository)
             configureQueueRoutes(queueRepository, personRepository, queueFilmService)
         }

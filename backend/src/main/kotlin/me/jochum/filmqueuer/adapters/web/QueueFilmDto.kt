@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FilmRequestDto(
     val tmdbId: Int,
+    val tv: Boolean = false,
 )
 
 @Serializable

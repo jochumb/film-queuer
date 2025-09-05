@@ -143,6 +143,7 @@ fun Route.configurePersonRoutes(
                                         overview = firstCredit.overview,
                                         mediaType = firstCredit.mediaType,
                                         role = combinedRoles.takeIf { it.isNotBlank() },
+                                        tv = false,
                                     )
                                 }
                         Department.DIRECTING, Department.WRITING, Department.OTHER ->
@@ -169,6 +170,7 @@ fun Route.configurePersonRoutes(
                                         overview = firstCredit.overview,
                                         mediaType = firstCredit.mediaType,
                                         role = combinedJobs.takeIf { it.isNotBlank() },
+                                        tv = false,
                                     )
                                 }
                     }

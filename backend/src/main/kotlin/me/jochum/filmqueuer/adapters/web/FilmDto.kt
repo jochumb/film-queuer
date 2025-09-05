@@ -14,10 +14,19 @@ data class FilmDto(
     val overview: String? = null,
     val mediaType: String? = null,
     val role: String? = null,
+    val tv: Boolean = false,
 )
 
 @Serializable
 data class FilmographyDto(
     val films: List<FilmDto>,
     val availableDepartments: List<String>,
+)
+
+@Serializable
+data class FilmSearchResponseDto(
+    val page: Int,
+    val results: List<FilmDto>,
+    val totalPages: Int,
+    val totalResults: Int,
 )

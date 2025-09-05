@@ -54,6 +54,7 @@ header h1 {
     display: flex;
     align-items: stretch;
     position: relative;
+    padding-right: 1.5rem;
 }
 
 .nav-button {
@@ -442,25 +443,19 @@ main {
 }
 
 .filmography-header {
+    margin-bottom: 1.5rem;
+}
+
+.filmography-header h2 {
+    margin: 0 0 1rem 0;
+}
+
+.filmography-controls {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.5rem;
     gap: 2rem;
-}
-
-.filmography-title {
-    flex: 1;
-}
-
-.filmography-title h2 {
-    margin: 0 0 0.5rem 0;
-}
-
-.filmography-title p {
-    margin: 0;
-    color: #6c757d;
-    font-size: 0.9em;
+    margin-top: 1rem;
 }
 
 .department-selector-placeholder {
@@ -496,6 +491,116 @@ main {
     box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
+/* Tab styling */
+.filmography-tabs {
+    display: flex;
+    margin: 0 0 0 0;
+    border-bottom: 2px solid #e9ecef;
+    gap: 0;
+}
+
+.tab-button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.tab-button:hover {
+    color: #495057;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.tab-button.active {
+    color: #28a745;
+    border-bottom-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.tab-content {
+    margin: 1rem 0 1rem 0;
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+.movie-search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.search-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.search-input-group input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.search-input-group input:focus {
+    outline: none;
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.search-input-group button {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.search-input-group button:hover {
+    background: linear-gradient(135deg, #218838, #28a745);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+}
+
+.search-info {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+/* Three-tab layout adjustments */
+.filmography-tabs {
+    justify-content: flex-start;
+}
+
+.tab-button {
+    min-width: 100px;
+    flex: 0 0 auto;
+}
+
+/* Specific styling for search containers */
+.tv-search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
 
 .vote-filter-inline {
     display: flex;

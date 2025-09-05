@@ -115,3 +115,102 @@ data class TmdbGenre(
     val id: Int,
     val name: String,
 )
+
+@Serializable
+data class TmdbMovieSearchResponse(
+    val page: Int,
+    val results: List<TmdbMovie>,
+    @SerialName("total_pages")
+    val totalPages: Int,
+    @SerialName("total_results")
+    val totalResults: Int,
+)
+
+@Serializable
+data class TmdbMovie(
+    val id: Int,
+    val title: String,
+    @SerialName("original_title")
+    val originalTitle: String? = null,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+    @SerialName("poster_path")
+    val posterPath: String? = null,
+    @SerialName("vote_average")
+    val voteAverage: Double = 0.0,
+    @SerialName("vote_count")
+    val voteCount: Int = 0,
+    val overview: String? = null,
+)
+
+@Serializable
+data class TmdbTvSearchResponse(
+    val page: Int,
+    val results: List<TmdbTvShow>,
+    @SerialName("total_pages")
+    val totalPages: Int,
+    @SerialName("total_results")
+    val totalResults: Int,
+)
+
+@Serializable
+data class TmdbTvShow(
+    val id: Int,
+    val name: String,
+    @SerialName("original_name")
+    val originalName: String? = null,
+    @SerialName("first_air_date")
+    val firstAirDate: String? = null,
+    @SerialName("poster_path")
+    val posterPath: String? = null,
+    @SerialName("vote_average")
+    val voteAverage: Double = 0.0,
+    @SerialName("vote_count")
+    val voteCount: Int = 0,
+    val overview: String? = null,
+)
+
+@Serializable
+data class TmdbTvDetails(
+    val id: Int,
+    val name: String,
+    @SerialName("original_name")
+    val originalName: String? = null,
+    @SerialName("first_air_date")
+    val firstAirDate: String? = null,
+    @SerialName("episode_run_time")
+    val episodeRunTime: List<Int>? = null,
+    @SerialName("number_of_episodes")
+    val numberOfEpisodes: Int? = null,
+    @SerialName("number_of_seasons")
+    val numberOfSeasons: Int? = null,
+    val seasons: List<TmdbSeason> = emptyList(),
+    val genres: List<TmdbGenre> = emptyList(),
+    @SerialName("poster_path")
+    val posterPath: String? = null,
+)
+
+@Serializable
+data class TmdbSeason(
+    val id: Int,
+    @SerialName("season_number")
+    val seasonNumber: Int,
+    @SerialName("episode_count")
+    val episodeCount: Int,
+)
+
+@Serializable
+data class TmdbSeasonDetails(
+    val id: Int,
+    @SerialName("season_number")
+    val seasonNumber: Int,
+    val episodes: List<TmdbEpisode>,
+)
+
+@Serializable
+data class TmdbEpisode(
+    val id: Int,
+    @SerialName("episode_number")
+    val episodeNumber: Int,
+    val runtime: Int? = null,
+)

@@ -85,12 +85,14 @@ frontend/
 - Films ordered chronologically (oldest to newest)
 - Automatic film deduplication with role/job concatenation
 
-### 3. Film Queue Management
-- Add/remove films from personal queues with toast notifications
-- Visual indicators show which films are already queued
+### 3. Film & TV Show Queue Management
+- Add/remove films and TV shows from personal queues with toast notifications
+- **Three-tab interface**: Filmography, Search Movies, Search TV Shows
+- Search external TMDB database for movies and TV shows to add to queues
+- Visual indicators show which films/shows are already queued
 - Manual drag-and-drop reordering with persistent sort order
 - Modal confirmations for destructive actions (film removal)
-- Two-column responsive layout (queue on left, filmography on right)
+- Two-column responsive layout (queue on left, browse content on right)
 
 ### 4. Queue List Management
 - Drag-and-drop reordering of queues themselves
@@ -109,18 +111,25 @@ frontend/
 - **Visual Feedback**: Hover states, drag indicators, and smooth animations
 - **Text Truncation**: Smart handling of long person names in queue previews
 
-### 6. Database & Temporal Types
+### 6. TV Show Support
+- **Unified Film/TV Model**: Both movies and TV shows stored as "films" with `tv` boolean flag
+- **TMDB Integration**: Separate API calls for movie details (`/movie/{id}`) vs TV details (`/tv/{id}`)
+- **Runtime Calculation**: TV shows calculate total runtime by fetching all season/episode details and summing individual episode runtimes
+- **Three-Tab Interface**: Filmography, Search Movies, Search TV Shows on queue edit pages
+- **Seamless UX**: Users can add both movies and TV shows to the same queues
+
+### 7. Database & Temporal Types
 - **Proper temporal types**: `Instant` for timestamps, `LocalDate` for dates
 - **UUID-based entity IDs** for all primary keys
 - **Sort order support** for manual queue and film arrangement
-- **Comprehensive migrations** with rollback support
+- **TV flag**: `tv` boolean column distinguishes movies (false) from TV shows (true)
 
 ## Database Schema
 
 ```sql
 -- Core entities
 persons: tmdb_id (PK), name, department
-films: tmdb_id (PK), title, original_title, release_date (DATE)
+films: tmdb_id (PK), title, original_title, release_date (DATE), runtime (INT), genres (VARCHAR), poster_path (VARCHAR), tv (BOOLEAN DEFAULT FALSE)
 queues: id (UUID, PK), type, person_tmdb_id, created_at (TIMESTAMP)
 
 -- Association with manual ordering
@@ -136,12 +145,16 @@ queue_films: queue_id (UUID), film_tmdb_id, added_at (TIMESTAMP), sort_order (IN
 - `GET /persons/{tmdbId}/filmography?department={dept}` - Get filmography with available departments
 - `PUT /persons/{tmdbId}/department` - Update person's department
 
+### Film & TV Search
+- `GET /films/search?q={query}` - Search TMDB movies by title
+- `GET /films/search/tv?q={query}` - Search TMDB TV shows by title
+
 ### Queue Management  
 - `GET /queues` - List all queues with person data (ordered by sort_order)
 - `GET /queues/previews` - Get compact queue previews with film counts for home page
 - `GET /queues/{id}` - Get specific queue with person data
 - `GET /queues/{id}/films` - Get queue films (ordered by sort_order)
-- `POST /queues/{id}/films` - Add film to queue
+- `POST /queues/{id}/films` - Add film/TV show to queue (includes `tv` boolean parameter)
 - `DELETE /queues/{id}/films/{filmId}` - Remove film from queue  
 - `PUT /queues/{id}/films/reorder` - Reorder films within queue
 - `PUT /queues/reorder` - Reorder queues themselves

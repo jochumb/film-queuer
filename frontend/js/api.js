@@ -112,5 +112,15 @@ export const api = {
             })
         });
         return response;
+    },
+
+    async searchMovies(query) {
+        const response = await fetch(`${API_BASE}/films/search?q=${encodeURIComponent(query)}`);
+        return response.json();
+    },
+
+    async searchTv(query) {
+        const response = await fetch(`${API_BASE}/films/search/tv?q=${encodeURIComponent(query)}`);
+        return response.json();
     }
 };

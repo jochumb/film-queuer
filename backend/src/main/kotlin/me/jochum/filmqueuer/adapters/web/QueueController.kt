@@ -100,7 +100,7 @@ fun Route.configureQueueRoutes(
                 val queueId = UUID.fromString(queueIdString)
                 val filmRequest = call.receive<FilmRequestDto>()
 
-                queueFilmService.addFilmToQueue(queueId, filmRequest.tmdbId)
+                queueFilmService.addFilmToQueue(queueId, filmRequest.tmdbId, filmRequest.tv)
                 call.respond(HttpStatusCode.Created, "Film added to queue successfully")
             } catch (e: IllegalArgumentException) {
                 call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")

@@ -19,6 +19,7 @@ class MySqlFilmRepository : FilmRepository {
                 it[runtime] = film.runtime
                 it[genres] = film.genres?.joinToString(", ")
                 it[posterPath] = film.posterPath
+                it[tv] = film.tv
             }
             film
         }
@@ -33,6 +34,7 @@ class MySqlFilmRepository : FilmRepository {
                     it[runtime] = film.runtime
                     it[genres] = film.genres?.joinToString(", ")
                     it[posterPath] = film.posterPath
+                    it[tv] = film.tv
                 }
             updateCount > 0
         }
@@ -59,5 +61,6 @@ class MySqlFilmRepository : FilmRepository {
             runtime = this[FilmTable.runtime],
             genres = this[FilmTable.genres]?.split(", ")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
             posterPath = this[FilmTable.posterPath],
+            tv = this[FilmTable.tv],
         )
 }

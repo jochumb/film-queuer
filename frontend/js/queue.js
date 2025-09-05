@@ -8,6 +8,9 @@ import { translateDepartmentToRole } from './search.js';
 let allFilms = [];
 let averageVoteCount = 0;
 let queuedFilmIds = new Set();
+let movieSearchResults = [];
+let tvSearchResults = [];
+let currentTab = 'filmography';
 
 export async function loadQueues() {
     try {
@@ -72,6 +75,10 @@ function showFilmManagementPageInternal() {
     // Load person's films from TMDB and current queue films
     loadPersonFilms(personTmdbId, department);
     loadQueueFilms(queueId);
+    
+    // Setup movie and TV search functionality
+    setupMovieSearch();
+    setupTvSearch();
 }
 
 async function loadPersonFilms(personTmdbId, department) {
@@ -164,10 +171,14 @@ export async function loadQueueFilms(queueId) {
             updateQueueStats(0);
         }
         
-        // Refresh filmography display to update queue indicators
-        if (allFilms.length > 0) {
+        // Refresh current tab display to update queue indicators
+        if (currentTab === 'filmography' && allFilms.length > 0) {
             const currentThreshold = document.getElementById('voteFilter')?.value || 10;
             applyVoteFilter(parseInt(currentThreshold));
+        } else if (currentTab === 'search-movies' && movieSearchResults.length > 0) {
+            displaySearchResults(movieSearchResults);
+        } else if (currentTab === 'search-tv' && tvSearchResults.length > 0) {
+            displaySearchResults(tvSearchResults);
         }
     } catch (error) {
         console.error('Error loading queue films:', error);
@@ -359,7 +370,211 @@ export async function promoteQueue(queueId) {
     }
 }
 
+export function switchFilmTab(tabName) {
+    currentTab = tabName;
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Update tab panels
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    document.querySelector(`[data-content="${tabName}"]`).classList.add('active');
+    
+    // Load appropriate content
+    if (tabName === 'filmography') {
+        // Show filmography content
+        if (allFilms.length > 0) {
+            const currentThreshold = document.getElementById('voteFilter')?.value || 10;
+            applyVoteFilter(parseInt(currentThreshold));
+        }
+    } else if (tabName === 'search-movies') {
+        // Show movie search content or previous search results
+        if (movieSearchResults.length > 0) {
+            displaySearchResults(movieSearchResults);
+        } else {
+            const personFilmsContainer = document.getElementById('personFilms');
+            personFilmsContainer.innerHTML = '<p>Search for movies to add them to your queue.</p>';
+        }
+    } else if (tabName === 'search-tv') {
+        // Show TV search content or previous search results
+        if (tvSearchResults.length > 0) {
+            displaySearchResults(tvSearchResults);
+        } else {
+            const personFilmsContainer = document.getElementById('personFilms');
+            personFilmsContainer.innerHTML = '<p>Search for TV shows to add them to your queue.</p>';
+        }
+    }
+}
+
+function setupMovieSearch() {
+    const searchButton = document.getElementById('movieSearchButton');
+    const searchInput = document.getElementById('movieSearch');
+    
+    if (searchButton && searchInput) {
+        searchButton.addEventListener('click', performMovieSearch);
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performMovieSearch();
+            }
+        });
+    }
+}
+
+async function performMovieSearch() {
+    const query = document.getElementById('movieSearch')?.value.trim();
+    const searchInfo = document.getElementById('movieSearchInfo');
+    const personFilmsContainer = document.getElementById('personFilms');
+    
+    if (!query) {
+        searchInfo.textContent = 'Please enter a search term.';
+        return;
+    }
+    
+    try {
+        searchInfo.textContent = 'Searching...';
+        personFilmsContainer.innerHTML = '<p>Searching for movies...</p>';
+        
+        const data = await api.searchMovies(query);
+        movieSearchResults = data.results || [];
+        
+        searchInfo.textContent = `Found ${data.totalResults} results for "${query}"`;
+        
+        if (movieSearchResults.length > 0) {
+            displaySearchResults(movieSearchResults);
+        } else {
+            personFilmsContainer.innerHTML = '<p>No movies found for your search.</p>';
+        }
+    } catch (error) {
+        console.error('Error searching movies:', error);
+        searchInfo.textContent = 'Error searching movies. Please try again.';
+        personFilmsContainer.innerHTML = '<p>Failed to search movies. Please try again.</p>';
+    }
+}
+
+function displaySearchResults(films) {
+    const personFilmsContainer = document.getElementById('personFilms');
+    
+    if (films.length > 0) {
+        personFilmsContainer.innerHTML = `
+            <div class="films-grid">
+                ${films.map(film => {
+                    const isInQueue = queuedFilmIds.has(film.id);
+                    return `
+                        <div class="film-card ${isInQueue ? 'in-queue' : ''}" data-film-id="${film.id}">
+                            <div class="film-poster">
+                                ${film.posterPath ? 
+                                    `<img src="${film.posterPath}" alt="${film.title}">` : 
+                                    '<div class="no-poster">🎬</div>'
+                                }
+                                ${isInQueue ? '<div class="queue-indicator">✓</div>' : ''}
+                            </div>
+                            <div class="film-info">
+                                <h4>${film.title}</h4>
+                                ${film.originalTitle && film.originalTitle !== film.title ? 
+                                    `<p class="original-title">(${film.originalTitle})</p>` : ''
+                                }
+                                ${film.releaseDate ? `<p class="release-date">${film.releaseDate.substring(0, 4)}</p>` : ''}
+                                ${film.voteAverage > 0 ? `<p class="rating">★ ${film.voteAverage.toFixed(1)} (${film.voteCount} votes)</p>` : ''}
+                                <button class="add-film-btn ${isInQueue ? 'in-queue' : ''}" onclick="addSearchFilmToQueue('${film.id}', '${film.title.replace(/'/g, "\\\'")}'${film.tv ? ', true' : ', false'})" ${isInQueue ? 'disabled' : ''}>
+                                    ${isInQueue ? 'In Queue' : 'Add to Queue'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } else {
+        personFilmsContainer.innerHTML = '<p>No films found.</p>';
+    }
+}
+
+function setupTvSearch() {
+    const searchButton = document.getElementById('tvSearchButton');
+    const searchInput = document.getElementById('tvSearch');
+    
+    if (searchButton && searchInput) {
+        searchButton.addEventListener('click', performTvSearch);
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performTvSearch();
+            }
+        });
+    }
+}
+
+async function performTvSearch() {
+    const query = document.getElementById('tvSearch')?.value.trim();
+    const searchInfo = document.getElementById('tvSearchInfo');
+    const personFilmsContainer = document.getElementById('personFilms');
+    
+    if (!query) {
+        searchInfo.textContent = 'Please enter a search term.';
+        return;
+    }
+    
+    try {
+        searchInfo.textContent = 'Searching...';
+        personFilmsContainer.innerHTML = '<p>Searching for TV shows...</p>';
+        
+        const data = await api.searchTv(query);
+        tvSearchResults = data.results || [];
+        
+        searchInfo.textContent = `Found ${data.totalResults} results for "${query}"`;
+        
+        if (tvSearchResults.length > 0) {
+            displaySearchResults(tvSearchResults);
+        } else {
+            personFilmsContainer.innerHTML = '<p>No TV shows found for your search.</p>';
+        }
+    } catch (error) {
+        console.error('Error searching TV shows:', error);
+        searchInfo.textContent = 'Error searching TV shows. Please try again.';
+        personFilmsContainer.innerHTML = '<p>Failed to search TV shows. Please try again.</p>';
+    }
+}
+
+export async function addSearchFilmToQueue(filmId, filmTitle, tv = false) {
+    const queueId = sessionStorage.getItem('currentQueueId');
+    
+    if (!queueId) {
+        notifications.error('Error: No queue selected');
+        return;
+    }
+
+    // Check if film is already in queue
+    if (queuedFilmIds.has(parseInt(filmId))) {
+        return; // Film already in queue, do nothing
+    }
+
+    try {
+        const response = await api.addFilmToQueue(queueId, {
+            tmdbId: parseInt(filmId),
+            tv: tv
+        });
+
+        if (response.ok) {
+            notifications.success(`"${filmTitle}" has been added to the queue!`);
+            // Refresh the queue films list
+            loadQueueFilms(queueId);
+        } else {
+            const errorText = await response.text();
+            notifications.error(`Failed to add film to queue: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('Error adding film to queue:', error);
+        notifications.error('Failed to add film to queue. Please try again.');
+    }
+}
+
 // Make functions available globally for onclick handlers
 window.addFilmToQueue = addFilmToQueue;
 window.removeFilmFromQueue = removeFilmFromQueue;
 window.promoteQueue = promoteQueue;
+window.switchFilmTab = switchFilmTab;
+window.addSearchFilmToQueue = addSearchFilmToQueue;

@@ -10,4 +10,5 @@ data class Film(
     val runtime: Int? = null,
     val genres: List<String>? = null,
     val posterPath: String? = null,
+    val tv: Boolean = false,
 )
