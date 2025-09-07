@@ -10,6 +10,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
 import me.jochum.filmqueuer.domain.QueueFilmService
@@ -36,14 +37,27 @@ private suspend fun mapQueueToDto(
                             imagePath = it.imagePath,
                         )
                     },
+                name = null,
+                description = null,
             )
         }
+        is NamedQueue ->
+            QueueDto(
+                id = queue.id.toString(),
+                type = "NAMED",
+                createdAt = queue.createdAt.toString(),
+                person = null,
+                name = queue.name,
+                description = queue.description,
+            )
         else ->
             QueueDto(
                 id = queue.id.toString(),
                 type = "UNKNOWN",
                 createdAt = queue.createdAt.toString(),
                 person = null,
+                name = null,
+                description = null,
             )
     }
 }
@@ -255,6 +269,31 @@ fun Route.configureQueueRoutes(
                 call.respond(QueuePreviewsDto(previews))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to fetch queue previews: ${e.message}")
+            }
+        }
+
+        post("/named") {
+            try {
+                val createRequest = call.receive<CreateNamedQueueDto>()
+
+                if (createRequest.name.isBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue name cannot be empty")
+                    return@post
+                }
+
+                val namedQueue =
+                    NamedQueue(
+                        id = UUID.randomUUID(),
+                        name = createRequest.name.trim(),
+                        description = createRequest.description?.trim(),
+                    )
+
+                val savedQueue = queueRepository.save(namedQueue)
+                val result = mapQueueToDto(savedQueue, personRepository)
+
+                call.respond(HttpStatusCode.Created, result)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to create named queue: ${e.message}")
             }
         }
     }

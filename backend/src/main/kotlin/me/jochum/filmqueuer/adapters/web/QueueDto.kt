@@ -8,6 +8,8 @@ data class QueueDto(
     val type: String,
     val createdAt: String,
     val person: SavedPersonDto? = null,
+    val name: String? = null,
+    val description: String? = null,
 )
 
 @Serializable
@@ -25,4 +27,10 @@ data class QueuePreviewDto(
 @Serializable
 data class QueuePreviewsDto(
     val previews: List<QueuePreviewDto>,
+)
+
+@Serializable
+data class CreateNamedQueueDto(
+    val name: String,
+    val description: String? = null,
 )

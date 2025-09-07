@@ -1,6 +1,7 @@
 import { showHomePage, showManagePage } from './ui.js';
 import { setupPersonSearch } from './search.js';
 import { loadQueues, loadQueuePreviews, showQueuePage } from './queue.js';
+import { setupNamedQueueCreation } from './app.js';
 
 export function setupNavigation() {
     window.addEventListener('popstate', handleRouteChange);
@@ -55,6 +56,7 @@ export function navigateToManage(pushState = true) {
     // Show the manage page and initialize functionality
     showManagePage();
     setupPersonSearch();
+    setupNamedQueueCreation();
     loadQueues();
 }
 

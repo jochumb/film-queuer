@@ -16,6 +16,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import me.jochum.filmqueuer.domain.Department
 import me.jochum.filmqueuer.domain.Film
+import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.Person
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
@@ -997,5 +998,149 @@ class QueueControllerTest {
 
             coVerify { queueRepository.reorderQueues(queueOrder) }
             coVerify { queueRepository.findAll() }
+        }
+
+    @Test
+    fun `POST queues named should create named queue successfully`() =
+        testApplication {
+            // Given
+            val queueName = "My Action Movies"
+            val namedQueue = NamedQueue(UUID.randomUUID(), queueName)
+
+            coEvery { queueRepository.save(any()) } returns namedQueue
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/named") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"name": "$queueName"}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.Created, response.status)
+            val responseBody = response.bodyAsText()
+            assertTrue(responseBody.contains(queueName))
+            assertTrue(responseBody.contains("\"type\":\"NAMED\""))
+
+            coVerify { queueRepository.save(match<NamedQueue> { it.name == queueName }) }
+        }
+
+    @Test
+    fun `POST queues named should return bad request for empty name`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/named") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"name": ""}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Queue name cannot be empty"))
+        }
+
+    @Test
+    fun `POST queues named should return bad request for blank name`() =
+        testApplication {
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/named") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"name": "   "}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Queue name cannot be empty"))
+        }
+
+    @Test
+    fun `POST queues named should handle repository errors`() =
+        testApplication {
+            // Given
+            val queueName = "My Queue"
+
+            coEvery { queueRepository.save(any()) } throws RuntimeException("Database connection failed")
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response =
+                client.post("/queues/named") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"name": "$queueName"}""")
+                }
+
+            // Then
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            assertTrue(response.bodyAsText().contains("Failed to create named queue"))
+            assertTrue(response.bodyAsText().contains("Database connection failed"))
+
+            coVerify { queueRepository.save(any()) }
+        }
+
+    @Test
+    fun `GET queues should return both person and named queues`() =
+        testApplication {
+            // Given
+            val person = Person(123, "John Doe", Department.ACTING, null)
+            val personQueue = PersonQueue(UUID.randomUUID(), 123, Instant.now())
+            val namedQueue = NamedQueue(UUID.randomUUID(), "My Favorites", "My favorite movies")
+
+            coEvery { queueRepository.findAll() } returns listOf(personQueue, namedQueue)
+            coEvery { personRepository.findByTmdbId(123) } returns person
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.get("/queues")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+
+            // Verify person queue
+            assertTrue(responseBody.contains("\"type\":\"PERSON\""))
+            assertTrue(responseBody.contains("John Doe"))
+
+            // Verify named queue
+            assertTrue(responseBody.contains("\"type\":\"NAMED\""))
+            assertTrue(responseBody.contains("My Favorites"))
+            assertTrue(responseBody.contains("My favorite movies"))
+
+            coVerify { queueRepository.findAll() }
+            coVerify { personRepository.findByTmdbId(123) }
         }
 }

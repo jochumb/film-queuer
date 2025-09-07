@@ -51,8 +51,9 @@ export async function showQueuePage(queueId) {
         
         // Store current queue data
         sessionStorage.setItem('currentQueueId', queueId);
+        sessionStorage.setItem('currentQueueType', queue.type);
         sessionStorage.setItem('currentPersonTmdbId', queue.person?.tmdbId || '');
-        sessionStorage.setItem('currentPersonName', queue.person?.name || 'Unknown');
+        sessionStorage.setItem('currentPersonName', queue.person?.name || queue.name || 'Unknown');
         sessionStorage.setItem('currentDepartment', queue.person?.department || '');
         
         // Show film management page
@@ -66,19 +67,32 @@ export async function showQueuePage(queueId) {
 
 function showFilmManagementPageInternal() {
     const queueId = sessionStorage.getItem('currentQueueId');
+    const queueType = sessionStorage.getItem('currentQueueType');
     const personTmdbId = sessionStorage.getItem('currentPersonTmdbId');
     const personName = sessionStorage.getItem('currentPersonName');
     const department = sessionStorage.getItem('currentDepartment');
     
-    showFilmManagementPage(queueId, personName);
+    showFilmManagementPage(queueId, personName, queueType);
     
-    // Load person's films from TMDB and current queue films
-    loadPersonFilms(personTmdbId, department);
+    // Load person's films from TMDB and current queue films only for person queues
+    if (queueType === 'PERSON') {
+        loadPersonFilms(personTmdbId, department);
+    }
     loadQueueFilms(queueId);
     
     // Setup movie and TV search functionality
     setupMovieSearch();
     setupTvSearch();
+    
+    // Set default tab for named queues
+    if (queueType === 'NAMED') {
+        currentTab = 'search-movies';
+        // Show search content by default
+        const personFilmsContainer = document.getElementById('personFilms');
+        if (personFilmsContainer) {
+            personFilmsContainer.innerHTML = '<p>Search for movies to add them to your queue.</p>';
+        }
+    }
 }
 
 async function loadPersonFilms(personTmdbId, department) {

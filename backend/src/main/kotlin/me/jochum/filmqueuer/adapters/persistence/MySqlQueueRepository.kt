@@ -1,5 +1,6 @@
 package me.jochum.filmqueuer.adapters.persistence
 
+import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.Queue
 import me.jochum.filmqueuer.domain.QueueRepository
@@ -21,6 +22,13 @@ class MySqlQueueRepository : QueueRepository {
                     personTmdbId = row[QueueTable.personTmdbId]!!,
                     createdAt = row[QueueTable.createdAt],
                 )
+            "NAMED" ->
+                NamedQueue(
+                    id = row[QueueTable.id],
+                    name = row[QueueTable.name]!!,
+                    description = row[QueueTable.description],
+                    createdAt = row[QueueTable.createdAt],
+                )
             else -> throw IllegalArgumentException("Unknown queue type: ${row[QueueTable.type]}")
         }
     }
@@ -36,6 +44,23 @@ class MySqlQueueRepository : QueueRepository {
                         it[id] = queue.id
                         it[type] = "PERSON"
                         it[personTmdbId] = queue.personTmdbId
+                        it[name] = null
+                        it[description] = null
+                        it[createdAt] = queue.createdAt
+                        it[sortOrder] = nextSortOrder
+                    }
+                    queue
+                }
+                is NamedQueue -> {
+                    // Get the next sort order (max + 1)
+                    val nextSortOrder = QueueTable.selectAll().maxOfOrNull { it[QueueTable.sortOrder] }?.plus(1) ?: 0
+
+                    QueueTable.insert {
+                        it[id] = queue.id
+                        it[type] = "NAMED"
+                        it[personTmdbId] = null
+                        it[name] = queue.name
+                        it[description] = queue.description
                         it[createdAt] = queue.createdAt
                         it[sortOrder] = nextSortOrder
                     }

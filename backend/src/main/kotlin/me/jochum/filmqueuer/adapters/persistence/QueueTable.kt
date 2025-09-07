@@ -8,6 +8,8 @@ object QueueTable : Table("queues") {
     val id = uuid("id")
     val type = varchar("type", 50)
     val personTmdbId = integer("person_tmdb_id").nullable()
+    val name = varchar("name", 255).nullable()
+    val description = text("description").nullable()
     val createdAt = timestamp("created_at").default(Instant.now())
     val sortOrder = integer("sort_order").default(0)
 

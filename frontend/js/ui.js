@@ -1,13 +1,36 @@
 import { translateDepartmentToRole } from './search.js';
 
+function getQueueDisplayName(queue) {
+    if (queue.type === 'PERSON') {
+        return queue.person?.name || 'Unknown Person';
+    } else if (queue.type === 'NAMED') {
+        return queue.name || 'Unnamed Queue';
+    }
+    return 'Unknown Queue';
+}
+
+function getQueueDisplayInfo(queue) {
+    if (queue.type === 'PERSON') {
+        return queue.person ? `
+            <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
+        ` : 'Unknown person';
+    } else if (queue.type === 'NAMED') {
+        return `
+            <strong>${queue.name}</strong>
+            ${queue.description ? `<span class="queue-description">- ${queue.description}</span>` : ''}
+        `;
+    }
+    return 'Unknown queue type';
+}
+
 export function displayQueues(queues) {
     const savedPersonsContainer = document.getElementById('savedPersons');
     if (queues.length > 0) {
         // Split queues into priority (first 9) and non-priority (rest, alphabetically sorted)
         const priorityQueues = queues.slice(0, 9);
         const nonPriorityQueues = queues.slice(9).sort((a, b) => {
-            const nameA = a.person?.name || 'Unknown';
-            const nameB = b.person?.name || 'Unknown';
+            const nameA = getQueueDisplayName(a);
+            const nameB = getQueueDisplayName(b);
             return nameA.localeCompare(nameB);
         });
 
@@ -28,9 +51,7 @@ export function displayQueues(queues) {
                                             <div class="saved-person-item queue-item clickable" draggable="true" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
                                                 <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
                                                 <div class="queue-info">
-                                                    ${queue.person ? `
-                                                        <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
-                                                    ` : 'Unknown item'}
+                                                    ${getQueueDisplayInfo(queue)}
                                                     <span class="edit-indicator"><i data-feather="edit-3"></i></span>
                                                 </div>
                                             </div>
@@ -60,9 +81,7 @@ export function displayQueues(queues) {
                                     <div class="saved-person-item queue-item clickable non-priority" data-queue-id="${queue.id}" onclick="navigateToQueue('${queue.id}')">
                                         <div class="drag-handle-spacer"></div>
                                         <div class="queue-info">
-                                            ${queue.person ? `
-                                                <strong>${queue.person.name}</strong> - ${translateDepartmentToRole(queue.person.department)}
-                                            ` : 'Unknown item'}
+                                            ${getQueueDisplayInfo(queue)}
                                             <span class="edit-indicator"><i data-feather="edit-3"></i></span>
                                         </div>
                                     </div>
@@ -103,18 +122,28 @@ export function displayQueuePreviews(queuePreviews) {
             <div class="queue-preview-card ${cardColorClass}" onclick="navigateToQueue('${queuePreview.queue.id}')">
                 <div class="queue-preview-header">
                     <div class="person-info">
-                        <div class="person-avatar ${queuePreview.queue.person?.imagePath ? 'has-image' : ''}">
-                            ${queuePreview.queue.person?.imagePath ? 
-                                `<img src="${queuePreview.queue.person.imagePath}" alt="${queuePreview.queue.person.name}">` : 
-                                (queuePreview.queue.person ? queuePreview.queue.person.name.charAt(0).toUpperCase() : '?')
-                            }
-                        </div>
-                        <div class="person-details">
-                            <h4>${queuePreview.queue.person ? queuePreview.queue.person.name : 'Unknown'}</h4>
-                        </div>
+                        ${queuePreview.queue.type === 'PERSON' ? `
+                            <div class="person-avatar ${queuePreview.queue.person?.imagePath ? 'has-image' : ''}">
+                                ${queuePreview.queue.person?.imagePath ? 
+                                    `<img src="${queuePreview.queue.person.imagePath}" alt="${queuePreview.queue.person.name}">` : 
+                                    (queuePreview.queue.person ? queuePreview.queue.person.name.charAt(0).toUpperCase() : '?')
+                                }
+                            </div>
+                            <div class="person-details">
+                                <h4>${queuePreview.queue.person ? queuePreview.queue.person.name : 'Unknown'}</h4>
+                            </div>
+                        ` : `
+                            <div class="named-queue-avatar">
+                                ${queuePreview.queue.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="queue-details">
+                                <h4>${queuePreview.queue.name}</h4>
+                                ${queuePreview.queue.description ? `<p class="queue-description">${queuePreview.queue.description}</p>` : ''}
+                            </div>
+                        `}
                     </div>
                     <div class="person-meta">
-                        <span class="queue-preview-role">${queuePreview.queue.person ? translateDepartmentToRole(queuePreview.queue.person.department) : ''}</span>
+                        <span class="queue-preview-role">${queuePreview.queue.type === 'PERSON' ? (queuePreview.queue.person ? translateDepartmentToRole(queuePreview.queue.person.department) : '') : 'Named Queue'}</span>
                         <span class="film-count">${queuePreview.totalFilms} films</span>
                     </div>
                 </div>
@@ -181,14 +210,24 @@ export function showManagePage() {
             </nav>
         </header>
         <main>
-            <section class="search-section">
-                <h2>Search for a Person</h2>
-                <div class="search-container">
-                    <input type="text" id="personSearch" placeholder="Enter actor or director name...">
-                    <button id="searchButton">Search</button>
-                </div>
-                <div id="searchResults" class="search-results"></div>
-            </section>
+            <div class="top-sections">
+                <section class="search-section">
+                    <h2>Search for a Person</h2>
+                    <div class="search-container">
+                        <input type="text" id="personSearch" placeholder="Enter actor or director name...">
+                        <button id="searchButton">Search</button>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </section>
+                
+                <section class="create-queue-section">
+                    <h2>Create Named Queue</h2>
+                    <div class="search-container">
+                        <input type="text" id="namedQueueInput" placeholder="Enter queue name..." maxlength="100" />
+                        <button id="createQueueButton">Create Queue</button>
+                    </div>
+                </section>
+            </div>
             
             <section class="saved-persons-section">
                 <div id="savedPersons"></div>
@@ -197,7 +236,7 @@ export function showManagePage() {
     `;
 }
 
-export function showFilmManagementPage(queueId, personName) {
+export function showFilmManagementPage(queueId, personName, queueType = 'PERSON') {
     document.querySelector('.container').innerHTML = `
         <header>
             <div class="header-content">
@@ -233,10 +272,11 @@ export function showFilmManagementPage(queueId, personName) {
                     <div class="filmography-header">
                         <h2>Browse Films</h2>
                         <div class="filmography-tabs">
+                            ${queueType === 'PERSON' ? `
                             <button class="tab-button active" data-tab="filmography" onclick="switchFilmTab('filmography')">
                                 <span class="tab-text">Filmography</span>
-                            </button>
-                            <button class="tab-button" data-tab="search-movies" onclick="switchFilmTab('search-movies')">
+                            </button>` : ''}
+                            <button class="tab-button ${queueType === 'NAMED' ? 'active' : ''}" data-tab="search-movies" onclick="switchFilmTab('search-movies')">
                                 <span class="tab-text">Search Movies</span>
                             </button>
                             <button class="tab-button" data-tab="search-tv" onclick="switchFilmTab('search-tv')">
@@ -244,6 +284,7 @@ export function showFilmManagementPage(queueId, personName) {
                             </button>
                         </div>
                         <div class="tab-content">
+                            ${queueType === 'PERSON' ? `
                             <div class="filmography-content tab-panel active" data-content="filmography">
                                 <div class="filmography-controls">
                                     <div class="department-selector-placeholder"></div>
@@ -253,8 +294,8 @@ export function showFilmManagementPage(queueId, personName) {
                                         <p class="filter-info-inline" id="filterInfo">Loading...</p>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="search-movies-content tab-panel" data-content="search-movies">
+                            </div>` : ''}
+                            <div class="search-movies-content tab-panel ${queueType === 'NAMED' ? 'active' : ''}" data-content="search-movies">
                                 <div class="movie-search-container">
                                     <div class="search-input-group">
                                         <input type="text" id="movieSearch" placeholder="Search for movies..." />

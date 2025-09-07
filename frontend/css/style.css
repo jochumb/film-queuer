@@ -129,7 +129,18 @@ main {
     overflow: hidden;
 }
 
-.search-section h2 {
+.top-sections {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.top-sections section {
+    flex: 1;
+}
+
+.search-section h2,
+.create-queue-section h2 {
     margin-bottom: 1rem;
     color: #2c3e50;
 }

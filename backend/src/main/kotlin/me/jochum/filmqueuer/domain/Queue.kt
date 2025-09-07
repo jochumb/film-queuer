@@ -13,3 +13,10 @@ data class PersonQueue(
     val personTmdbId: Int,
     override val createdAt: Instant = Instant.now(),
 ) : Queue(id, createdAt)
+
+data class NamedQueue(
+    override val id: UUID,
+    val name: String,
+    val description: String? = null,
+    override val createdAt: Instant = Instant.now(),
+) : Queue(id, createdAt)

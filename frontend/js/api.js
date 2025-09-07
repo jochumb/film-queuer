@@ -101,6 +101,20 @@ export const api = {
         return response.json();
     },
 
+    async createNamedQueue(name, description = null) {
+        const response = await fetch(`${API_BASE}/queues/named`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                description: description
+            })
+        });
+        return response;
+    },
+
     async updatePersonDepartment(personTmdbId, department) {
         const response = await fetch(`${API_BASE}/persons/${personTmdbId}/department`, {
             method: 'PUT',
