@@ -7,6 +7,7 @@ object PersonTable : Table("persons") {
     val name = varchar("name", 255)
     val department = enumerationByName("department", 50, me.jochum.filmqueuer.domain.Department::class)
     val imagePath = varchar("image_path", 500).nullable()
+    val sortName = varchar("sort_name", 255)
 
     override val primaryKey = PrimaryKey(tmdbId)
 }

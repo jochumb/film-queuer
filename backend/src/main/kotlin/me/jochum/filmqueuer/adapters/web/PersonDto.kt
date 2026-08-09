@@ -43,3 +43,8 @@ data class PersonSelectionResponseDto(
 data class UpdateDepartmentDto(
     val department: String,
 )
+
+@Serializable
+data class UpdateSortNameDto(
+    val sortName: String,
+)

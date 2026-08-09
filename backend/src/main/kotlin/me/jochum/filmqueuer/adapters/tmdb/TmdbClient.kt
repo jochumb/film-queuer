@@ -33,17 +33,25 @@ class TmdbClient : TmdbService {
         }.body()
     }
 
-    override suspend fun searchMovies(query: String): TmdbMovieSearchResponse {
+    override suspend fun searchMovies(
+        query: String,
+        year: Int?,
+    ): TmdbMovieSearchResponse {
         return httpClient.get("$baseUrl/search/movie") {
             header(HttpHeaders.Authorization, "Bearer $apiKey")
             parameter("query", query)
+            if (year != null) parameter("primary_release_year", year)
         }.body()
     }
 
-    override suspend fun searchTv(query: String): TmdbTvSearchResponse {
+    override suspend fun searchTv(
+        query: String,
+        year: Int?,
+    ): TmdbTvSearchResponse {
         return httpClient.get("$baseUrl/search/tv") {
             header(HttpHeaders.Authorization, "Bearer $apiKey")
             parameter("query", query)
+            if (year != null) parameter("first_air_date_year", year)
         }.body()
     }
 
@@ -62,12 +70,14 @@ class TmdbClient : TmdbService {
     override suspend fun getMovieDetails(movieId: Int): TmdbMovieDetails {
         return httpClient.get("$baseUrl/movie/$movieId") {
             header(HttpHeaders.Authorization, "Bearer $apiKey")
+            parameter("append_to_response", "credits,release_dates")
         }.body()
     }
 
     override suspend fun getTvDetails(tvId: Int): TmdbTvDetails {
         return httpClient.get("$baseUrl/tv/$tvId") {
             header(HttpHeaders.Authorization, "Bearer $apiKey")
+            parameter("append_to_response", "aggregate_credits")
         }.body()
     }
 

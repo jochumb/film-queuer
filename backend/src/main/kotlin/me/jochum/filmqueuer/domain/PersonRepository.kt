@@ -13,4 +13,9 @@ interface PersonRepository {
         tmdbId: Int,
         department: Department,
     ): Boolean
+
+    suspend fun updateSortName(
+        tmdbId: Int,
+        sortName: String,
+    ): Boolean
 }

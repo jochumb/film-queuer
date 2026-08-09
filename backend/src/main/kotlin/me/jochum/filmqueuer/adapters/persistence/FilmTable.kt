@@ -12,6 +12,7 @@ object FilmTable : Table("films") {
     val genres = varchar("genres", 500).nullable()
     val posterPath = varchar("poster_path", 500).nullable()
     val tv = bool("tv").default(false)
+    val sortTitle = varchar("sort_title", 255)
 
     override val primaryKey = PrimaryKey(tmdbId)
 }

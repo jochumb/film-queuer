@@ -19,6 +19,8 @@ class QueueFilmServiceTest {
     private lateinit var filmRepository: FilmRepository
     private lateinit var queueFilmRepository: QueueFilmRepository
     private lateinit var tmdbService: TmdbService
+    private lateinit var personRepository: PersonRepository
+    private lateinit var filmFactory: TmdbFilmFactory
     private lateinit var service: QueueFilmService
 
     @BeforeEach
@@ -26,7 +28,9 @@ class QueueFilmServiceTest {
         filmRepository = mockk()
         queueFilmRepository = mockk()
         tmdbService = mockk()
-        service = QueueFilmService(filmRepository, queueFilmRepository, tmdbService)
+        personRepository = mockk()
+        filmFactory = TmdbFilmFactory(tmdbService, personRepository)
+        service = QueueFilmService(filmRepository, queueFilmRepository, filmFactory)
     }
 
     @Test
@@ -592,6 +596,51 @@ class QueueFilmServiceTest {
             coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
             coVerify(exactly = 0) { tmdbService.getTvSeasonDetails(tmdbId, 0) }
+        }
+
+    @Test
+    fun `addFilmToQueue should resolve a TV show's director from aggregate_credits`() =
+        runBlocking {
+            val queueId = UUID.randomUUID()
+            val tmdbId = 87108
+            val tvDetails =
+                me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails(
+                    id = tmdbId,
+                    name = "Chernobyl",
+                    firstAirDate = "2019-05-06",
+                    seasons = emptyList(),
+                    aggregateCredits =
+                        me.jochum.filmqueuer.adapters.tmdb.TmdbAggregateCredits(
+                            crew =
+                                listOf(
+                                    me.jochum.filmqueuer.adapters.tmdb.TmdbAggregateCrewMember(
+                                        id = 212408,
+                                        name = "Johan Renck",
+                                        jobs =
+                                            listOf(
+                                                me.jochum.filmqueuer.adapters.tmdb.TmdbAggregateCrewJob(
+                                                    job = "Director",
+                                                    episodeCount = 5,
+                                                ),
+                                            ),
+                                        totalEpisodeCount = 5,
+                                    ),
+                                ),
+                        ),
+                )
+            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+
+            coEvery { tmdbService.getTvDetails(tmdbId) } returns tvDetails
+            coEvery { personRepository.findByTmdbId(212408) } returns null
+            coEvery { personRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+
+            val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
+
+            assertEquals(queueFilm, result)
+            coVerify { filmRepository.save(match { it.directorTmdbIds == listOf(212408) }) }
+            coVerify { personRepository.save(match { it.tmdbId == 212408 && it.name == "Johan Renck" }) }
         }
 
     @Test

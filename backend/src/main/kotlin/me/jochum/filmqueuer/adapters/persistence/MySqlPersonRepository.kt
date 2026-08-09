@@ -11,15 +11,23 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.update
 
 class MySqlPersonRepository : PersonRepository {
+    // Preserve any manually-corrected sortName across re-saves (e.g. a director re-resolved via
+    // another film match): only a true first insert gets the computed default.
     override suspend fun save(person: Person): Person =
         newSuspendedTransaction {
+            val existingSortName =
+                PersonTable.selectAll().where { PersonTable.tmdbId eq person.tmdbId }
+                    .singleOrNull()
+                    ?.get(PersonTable.sortName)
+            val sortNameToStore = person.sortName ?: existingSortName ?: Person.defaultSortName(person.name)
             PersonTable.replace {
                 it[tmdbId] = person.tmdbId
                 it[name] = person.name
                 it[department] = person.department
                 it[imagePath] = person.imagePath
+                it[sortName] = sortNameToStore
             }
-            person
+            person.copy(sortName = sortNameToStore)
         }
 
     override suspend fun findByTmdbId(tmdbId: Int): Person? =
@@ -32,6 +40,7 @@ class MySqlPersonRepository : PersonRepository {
                         name = row[PersonTable.name],
                         department = row[PersonTable.department],
                         imagePath = row[PersonTable.imagePath],
+                        sortName = row[PersonTable.sortName],
                     )
                 }
         }
@@ -44,6 +53,7 @@ class MySqlPersonRepository : PersonRepository {
                     name = row[PersonTable.name],
                     department = row[PersonTable.department],
                     imagePath = row[PersonTable.imagePath],
+                    sortName = row[PersonTable.sortName],
                 )
             }
         }
@@ -61,6 +71,18 @@ class MySqlPersonRepository : PersonRepository {
             val updateCount =
                 PersonTable.update({ PersonTable.tmdbId eq tmdbId }) {
                     it[PersonTable.department] = department
+                }
+            updateCount > 0
+        }
+
+    override suspend fun updateSortName(
+        tmdbId: Int,
+        sortName: String,
+    ): Boolean =
+        newSuspendedTransaction {
+            val updateCount =
+                PersonTable.update({ PersonTable.tmdbId eq tmdbId }) {
+                    it[PersonTable.sortName] = sortName
                 }
             updateCount > 0
         }

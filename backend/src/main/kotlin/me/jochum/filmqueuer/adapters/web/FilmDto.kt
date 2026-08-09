@@ -30,3 +30,8 @@ data class FilmSearchResponseDto(
     val totalPages: Int,
     val totalResults: Int,
 )
+
+@Serializable
+data class UpdateSortTitleDto(
+    val sortTitle: String,
+)

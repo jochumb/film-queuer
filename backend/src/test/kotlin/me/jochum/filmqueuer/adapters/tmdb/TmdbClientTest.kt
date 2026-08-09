@@ -87,4 +87,90 @@ class TmdbClientTest {
             assertEquals(62, mockSeasonDetails.episodes[0].runtime)
             assertEquals(56, mockSeasonDetails.episodes[1].runtime)
         }
+
+    @Test
+    fun `originalReleaseDate should pick the earliest theatrical date across countries, ignoring the US-biased top-level field`() {
+        // Modeled on TMDB's real data for Parasite (496243): the top-level `release_date` here
+        // is deliberately set to a later US date to prove it's ignored, while South Korea's
+        // actual earliest theatrical release (2019-05-30) is buried among many other countries.
+        val details =
+            TmdbMovieDetails(
+                id = 496243,
+                title = "Parasite",
+                releaseDate = "2019-11-01",
+                releaseDates =
+                    TmdbReleaseDatesResponse(
+                        results =
+                            listOf(
+                                TmdbCountryReleaseDates(
+                                    country = "KR",
+                                    releaseDates = listOf(TmdbReleaseDateEntry(type = 3, releaseDate = "2019-05-30T00:00:00.000Z")),
+                                ),
+                                TmdbCountryReleaseDates(
+                                    country = "US",
+                                    releaseDates =
+                                        listOf(
+                                            TmdbReleaseDateEntry(type = 1, releaseDate = "2019-05-21T00:00:00.000Z"),
+                                            TmdbReleaseDateEntry(type = 3, releaseDate = "2019-11-01T00:00:00.000Z"),
+                                        ),
+                                ),
+                            ),
+                    ),
+            )
+
+        assertEquals("2019-05-30", details.originalReleaseDate())
+    }
+
+    @Test
+    fun `originalReleaseDate should exclude premiere, digital, physical and TV dates`() {
+        val details =
+            TmdbMovieDetails(
+                id = 1,
+                title = "Some Film",
+                releaseDate = "2020-01-01",
+                releaseDates =
+                    TmdbReleaseDatesResponse(
+                        results =
+                            listOf(
+                                TmdbCountryReleaseDates(
+                                    country = "US",
+                                    releaseDates =
+                                        listOf(
+                                            TmdbReleaseDateEntry(type = 1, releaseDate = "2019-01-01T00:00:00.000Z"),
+                                            TmdbReleaseDateEntry(type = 4, releaseDate = "2019-02-01T00:00:00.000Z"),
+                                            TmdbReleaseDateEntry(type = 5, releaseDate = "2019-03-01T00:00:00.000Z"),
+                                            TmdbReleaseDateEntry(type = 6, releaseDate = "2019-04-01T00:00:00.000Z"),
+                                            TmdbReleaseDateEntry(type = 3, releaseDate = "2019-05-01T00:00:00.000Z"),
+                                        ),
+                                ),
+                            ),
+                    ),
+            )
+
+        assertEquals("2019-05-01", details.originalReleaseDate())
+    }
+
+    @Test
+    fun `originalReleaseDate should fall back to the top-level field when release_dates has nothing usable`() {
+        val withoutReleaseDates = TmdbMovieDetails(id = 1, title = "Some Film", releaseDate = "2020-01-01")
+        assertEquals("2020-01-01", withoutReleaseDates.originalReleaseDate())
+
+        val onlyNonTheatrical =
+            TmdbMovieDetails(
+                id = 2,
+                title = "Some Film",
+                releaseDate = "2020-01-01",
+                releaseDates =
+                    TmdbReleaseDatesResponse(
+                        results =
+                            listOf(
+                                TmdbCountryReleaseDates(
+                                    country = "US",
+                                    releaseDates = listOf(TmdbReleaseDateEntry(type = 4, releaseDate = "2019-01-01T00:00:00.000Z")),
+                                ),
+                            ),
+                    ),
+            )
+        assertEquals("2020-01-01", onlyNonTheatrical.originalReleaseDate())
+    }
 }

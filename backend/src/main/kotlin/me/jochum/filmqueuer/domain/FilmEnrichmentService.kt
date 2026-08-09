@@ -46,7 +46,7 @@ class FilmEnrichmentService(
                 // Prepare enriched data
                 val genresList = tmdbDetails.genres.map { it.name }.takeIf { it.isNotEmpty() }
                 val fullPosterPath = tmdbDetails.posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
-                val releaseDate = tmdbDetails.releaseDate?.let { LocalDate.parse(it) }
+                val releaseDate = tmdbDetails.originalReleaseDate()?.let { LocalDate.parse(it) }
 
                 // Create enriched film, keeping existing data where new data is null
                 val enrichedFilm =

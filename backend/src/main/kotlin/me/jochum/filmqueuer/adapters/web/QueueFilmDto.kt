@@ -22,6 +22,15 @@ data class FilmResponseDto(
     val runtime: Int? = null,
     val genres: List<String>? = null,
     val posterPath: String? = null,
+    val directors: List<DirectorDto> = emptyList(),
+    val sortTitle: String? = null,
+)
+
+@Serializable
+data class DirectorDto(
+    val tmdbId: Int,
+    val name: String,
+    val sortName: String,
 )
 
 @Serializable

@@ -207,5 +207,30 @@ fun Route.configurePersonRoutes(
                 call.respond(HttpStatusCode.InternalServerError, "Failed to update department: ${e.message}")
             }
         }
+
+        put("/{tmdbId}/sort-name") {
+            val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
+            if (tmdbId == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid tmdbId parameter")
+                return@put
+            }
+
+            try {
+                val updateDto = call.receive<UpdateSortNameDto>()
+                if (updateDto.sortName.isBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, "sortName must not be blank")
+                    return@put
+                }
+
+                val updated = personRepository.updateSortName(tmdbId, updateDto.sortName.trim())
+                if (updated) {
+                    call.respond(HttpStatusCode.OK)
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Person not found")
+                }
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to update sort name: ${e.message}")
+            }
+        }
     }
 }

@@ -2,13 +2,19 @@ package me.jochum.filmqueuer.adapters.web
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
+import me.jochum.filmqueuer.domain.FilmRepository
 
-fun Route.configureFilmRoutes(tmdbService: TmdbService) {
+fun Route.configureFilmRoutes(
+    tmdbService: TmdbService,
+    filmRepository: FilmRepository,
+) {
     route("/films") {
         get("/search") {
             val query = call.request.queryParameters["q"]
@@ -16,9 +22,10 @@ fun Route.configureFilmRoutes(tmdbService: TmdbService) {
                 call.respond(HttpStatusCode.BadRequest, "Query parameter 'q' is required")
                 return@get
             }
+            val year = call.request.queryParameters["year"]?.toIntOrNull()
 
             try {
-                val tmdbResponse = tmdbService.searchMovies(query)
+                val tmdbResponse = tmdbService.searchMovies(query, year)
 
                 val filmSearchResponse =
                     FilmSearchResponseDto(
@@ -55,9 +62,10 @@ fun Route.configureFilmRoutes(tmdbService: TmdbService) {
                 call.respond(HttpStatusCode.BadRequest, "Query parameter 'q' is required")
                 return@get
             }
+            val year = call.request.queryParameters["year"]?.toIntOrNull()
 
             try {
-                val tmdbResponse = tmdbService.searchTv(query)
+                val tmdbResponse = tmdbService.searchTv(query, year)
 
                 val tvSearchResponse =
                     FilmSearchResponseDto(
@@ -85,6 +93,31 @@ fun Route.configureFilmRoutes(tmdbService: TmdbService) {
                 call.respond(tvSearchResponse)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to search TV shows: ${e.message}")
+            }
+        }
+
+        put("/{tmdbId}/sort-title") {
+            val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
+            if (tmdbId == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid tmdbId parameter")
+                return@put
+            }
+
+            try {
+                val updateDto = call.receive<UpdateSortTitleDto>()
+                if (updateDto.sortTitle.isBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, "sortTitle must not be blank")
+                    return@put
+                }
+
+                val updated = filmRepository.updateSortTitle(tmdbId, updateDto.sortTitle.trim())
+                if (updated) {
+                    call.respond(HttpStatusCode.OK)
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Film not found")
+                }
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to update sort title: ${e.message}")
             }
         }
     }

@@ -87,13 +87,59 @@ export const api = {
         });
     },
 
-    async searchMovies(query) {
-        const response = await fetch(`${API_BASE}/films/search?q=${encodeURIComponent(query)}`);
+    async searchMovies(query, year) {
+        const yearParam = year ? `&year=${encodeURIComponent(year)}` : '';
+        const response = await fetch(`${API_BASE}/films/search?q=${encodeURIComponent(query)}${yearParam}`);
         return response.json();
     },
 
-    async searchTv(query) {
-        const response = await fetch(`${API_BASE}/films/search/tv?q=${encodeURIComponent(query)}`);
+    async searchTv(query, year) {
+        const yearParam = year ? `&year=${encodeURIComponent(year)}` : '';
+        const response = await fetch(`${API_BASE}/films/search/tv?q=${encodeURIComponent(query)}${yearParam}`);
         return response.json();
+    },
+
+    async getCollection({ owned, watched, unmatched, removed, sort, order, offset = 0, limit = 40 } = {}) {
+        const params = new URLSearchParams({ offset, limit });
+        if (owned !== undefined) params.set('owned', owned);
+        if (watched !== undefined) params.set('watched', watched);
+        if (unmatched !== undefined) params.set('unmatched', unmatched);
+        if (removed !== undefined) params.set('removed', removed);
+        if (sort !== undefined) params.set('sort', sort);
+        if (order !== undefined) params.set('order', order);
+        const response = await fetch(`${API_BASE}/collection?${params.toString()}`);
+        return response.json();
+    },
+
+    async linkCollectionItem(id, tmdbId, tv = false) {
+        return fetch(`${API_BASE}/collection/${id}/link`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tmdbId, tv }),
+        });
+    },
+
+    async setCollectionItemRemoved(id, removed) {
+        return fetch(`${API_BASE}/collection/${id}/removed`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ removed }),
+        });
+    },
+
+    async updateDirectorSortName(tmdbId, sortName) {
+        return fetch(`${API_BASE}/persons/${tmdbId}/sort-name`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sortName }),
+        });
+    },
+
+    async updateFilmSortTitle(tmdbId, sortTitle) {
+        return fetch(`${API_BASE}/films/${tmdbId}/sort-title`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sortTitle }),
+        });
     },
 };

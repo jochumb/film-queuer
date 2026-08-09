@@ -20,8 +20,13 @@ export function runtimeLabel(minutes) {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function esc(str) {
-    return String(str ?? '').replace(/'/g, "\\'");
+export function esc(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 export function queueDisplayName(queue) {
@@ -58,6 +63,7 @@ export function renderTopbar(active) {
             <nav class="topbar-nav">
                 <button class="nav-pill ${active === 'home' ? 'active' : ''}" data-nav="home">Home</button>
                 <button class="nav-pill ${active === 'manage' ? 'active' : ''}" data-nav="manage">Manage</button>
+                <button class="nav-pill ${active === 'collection' ? 'active' : ''}" data-nav="collection">Collection</button>
             </nav>
         </header>
     `;
@@ -328,4 +334,244 @@ export function renderFilmGrid(films, queuedFilmIds, options = {}) {
             </div>
         `;
     }).join('');
+}
+
+/* ===== Collection ===== */
+export function renderCollectionShell() {
+    return `
+        <div class="page">
+            <div class="page-header">
+                <h1>Collection</h1>
+                <span class="subtitle" id="collectionSubtitle">Films from your Letterboxd exports</span>
+            </div>
+            <div class="panel collection-panel">
+                <div class="collection-controls">
+                    <div class="collection-filters">
+                        <label class="filter-toggle">
+                            <input type="checkbox" id="ownedToggle" checked>
+                            Owned
+                        </label>
+                        <label class="filter-toggle">
+                            <input type="checkbox" id="watchedToggle">
+                            Watched
+                        </label>
+                        <label class="filter-toggle">
+                            <input type="checkbox" id="unmatchedOnlyToggle">
+                            Unmatched only
+                        </label>
+                    </div>
+                    <div class="collection-sort">
+                        <label for="sortSelect">Sort</label>
+                        <select id="sortSelect">
+                            <option value="director:asc" selected>Director (A–Z)</option>
+                            <option value="director:desc">Director (Z–A)</option>
+                            <option value="title:asc">Title (A–Z)</option>
+                            <option value="title:desc">Title (Z–A)</option>
+                            <option value="year:asc">Year (oldest)</option>
+                            <option value="year:desc">Year (newest)</option>
+                            <option value="added:desc">Recently added</option>
+                            <option value="added:asc">Oldest added</option>
+                        </select>
+                    </div>
+                    <label class="filter-toggle filter-toggle-subtle">
+                        <input type="checkbox" id="showRemovedToggle">
+                        Show removed
+                    </label>
+                    <div class="pager" id="collectionPagerTop"></div>
+                </div>
+                <div class="collection-table-wrap">
+                    <table class="collection-table">
+                        <thead>
+                            <tr>
+                                <th class="ct-poster"></th>
+                                <th>Title</th>
+                                <th class="ct-year">Year</th>
+                                <th>Director</th>
+                                <th class="ct-actions"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="collectionBody">
+                            <tr><td colspan="5" class="loading-text">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="collection-controls collection-controls-bottom">
+                    <div class="pager" id="collectionPagerBottom"></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderCollectionRows(items) {
+    if (items.length === 0) {
+        return '<tr><td colspan="5" class="muted-text">No items found.</td></tr>';
+    }
+    return items.map((item) => {
+        const matched = item.filmTmdbId != null;
+        const displayTitle = matched && item.film ? item.film.title : item.title;
+        const displayYear = matched && item.film && item.film.releaseDate ? yearOf(item.film.releaseDate) : (item.year ?? 'N/A');
+        const poster = matched && item.film ? item.film.posterPath : null;
+        const directors = matched && item.film ? (item.film.directors || []) : [];
+        const directorHtml = directors.length > 0
+            ? directors.map((d) => `<span class="director-name" data-edit-sort-name data-director-id="${d.tmdbId}" data-director-name="${esc(d.name)}" data-director-sort-name="${esc(d.sortName)}" title="Click to fix sort order">${esc(d.name)}</span>`).join(', ')
+            : '<span class="muted-text">—</span>';
+        const titleHtml = matched && item.film
+            ? `<span class="editable-title" data-edit-sort-title data-title-id="${item.film.tmdbId}" data-title-name="${esc(displayTitle)}" data-title-sort="${esc(item.film.sortTitle || displayTitle)}" title="Click to fix sort order">${esc(displayTitle)}</span>`
+            : esc(displayTitle);
+        const unmatchedIcon = matched ? '' : '<span class="unmatched-icon" title="Unmatched — use Fix match to link this film">⚠</span> ';
+        return `
+            <tr data-item-id="${item.id}">
+                <td class="ct-poster">
+                    <div class="ct-thumb">
+                        ${poster ? `<img src="${poster}" alt="${esc(displayTitle)}">` : '<span class="placeholder">🎬</span>'}
+                    </div>
+                </td>
+                <td class="ct-title">${unmatchedIcon}${titleHtml}</td>
+                <td class="ct-year">${displayYear}</td>
+                <td class="ct-director">${directorHtml}</td>
+                <td class="ct-actions">
+                    <button class="btn btn-sm add-to-queue-btn" data-tmdb-id="${item.filmTmdbId ?? ''}" data-title="${esc(displayTitle)}" ${matched ? '' : 'disabled'}>
+                        Add to queue
+                    </button>
+                    <div class="row-menu">
+                        <button class="btn btn-sm row-menu-toggle" type="button" data-row-menu-toggle aria-label="More actions" title="More actions">⋮</button>
+                        <div class="row-menu-dropdown">
+                            <button class="row-menu-item fix-match-btn" data-id="${item.id}" data-title="${esc(item.title)}" data-year="${item.year ?? ''}">Fix match</button>
+                            ${item.removed
+                                ? `<button class="row-menu-item restore-item-btn" data-id="${item.id}" data-title="${esc(displayTitle)}">Restore</button>`
+                                : `<button class="row-menu-item remove-item-btn" data-id="${item.id}" data-title="${esc(displayTitle)}">Remove</button>`}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+export function renderPager(offset, limit, total) {
+    const from = total === 0 ? 0 : offset + 1;
+    const to = Math.min(offset + limit, total);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = Math.floor(offset / limit) + 1;
+    return `
+        <span class="pager-info">${from}–${to} of ${total}</span>
+        <button class="btn btn-sm pager-prev" ${offset <= 0 ? 'disabled' : ''}>Prev</button>
+        <span class="pager-page-jump">
+            Page <input type="number" class="pager-page-input" min="1" max="${totalPages}" value="${currentPage}" data-total-pages="${totalPages}">
+            of ${totalPages}
+        </span>
+        <button class="btn btn-sm pager-next" ${offset + limit >= total ? 'disabled' : ''}>Next</button>
+    `;
+}
+
+export function renderLinkModal(item) {
+    return `
+        <div class="modal-overlay">
+            <div class="modal-dialog link-modal-dialog">
+                <div class="modal-header"><h3>Fix match</h3></div>
+                <div class="modal-body">
+                    <p class="link-modal-source">${esc(item.title)}${item.year ? ` (${item.year})` : ''}</p>
+                    <div class="link-mode-tabs">
+                        <button class="link-mode-tab active" data-link-mode="movie" type="button">Movies</button>
+                        <button class="link-mode-tab" data-link-mode="tv" type="button">TV Shows</button>
+                    </div>
+                    <div class="field-row">
+                        <input type="text" id="linkSearchInput" value="${esc(item.title)}">
+                        <input type="number" id="linkYearInput" class="link-year-input" placeholder="Year" value="${item.year ?? ''}">
+                        <button class="btn btn-primary" id="linkSearchButton">Search</button>
+                    </div>
+                    <div id="linkSearchResults" class="film-grid link-search-results"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="linkModalClose">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderEditSortNameModal(director) {
+    return `
+        <div class="modal-overlay">
+            <div class="modal-dialog">
+                <div class="modal-header"><h3>Fix sort name</h3></div>
+                <div class="modal-body">
+                    <p class="link-modal-source">${esc(director.name)}</p>
+                    <div class="field-row">
+                        <input type="text" id="sortNameInput" value="${esc(director.sortName)}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="sortNameModalClose">Cancel</button>
+                    <button class="btn btn-primary" id="sortNameModalSave">Save</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderEditSortTitleModal(film) {
+    return `
+        <div class="modal-overlay">
+            <div class="modal-dialog">
+                <div class="modal-header"><h3>Fix sort title</h3></div>
+                <div class="modal-body">
+                    <p class="link-modal-source">${esc(film.title)}</p>
+                    <div class="field-row">
+                        <input type="text" id="sortTitleInput" value="${esc(film.sortTitle)}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="sortTitleModalClose">Cancel</button>
+                    <button class="btn btn-primary" id="sortTitleModalSave">Save</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderLinkSearchResults(films) {
+    if (films.length === 0) {
+        return '<p class="muted-text">No results.</p>';
+    }
+    return films.map((film) => `
+        <div class="film-tile link-result-tile" data-select-film="${film.id}" data-select-title="${esc(film.title)}" data-select-tv="${film.tv ? '1' : '0'}">
+            <div class="film-tile-poster">
+                ${film.posterPath ? `<img src="${film.posterPath}" alt="${esc(film.title)}">` : '<div class="placeholder">🎬</div>'}
+            </div>
+            <div class="film-tile-body">
+                <p class="film-tile-title">${esc(film.title)}</p>
+                <span class="film-tile-sub">${yearOf(film.releaseDate)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+export function renderQueuePickerModal(queues) {
+    return `
+        <div class="modal-overlay">
+            <div class="modal-dialog">
+                <div class="modal-header"><h3>Add to queue</h3></div>
+                <div class="modal-body">
+                    ${queues.length === 0 ? '<p class="muted-text">No queues yet.</p>' : `
+                    <div class="rank-list queue-picker-list">
+                        ${queues.map((q) => `
+                            <div class="queue-row queue-picker-row" data-pick-queue="${q.id}">
+                                ${avatarHtml(q)}
+                                <div class="queue-row-info">
+                                    <p class="queue-row-name">${esc(queueDisplayName(q))}</p>
+                                    <span class="queue-row-sub">${esc(queueSubLabel(q))}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    `}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="queuePickerClose">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
 }

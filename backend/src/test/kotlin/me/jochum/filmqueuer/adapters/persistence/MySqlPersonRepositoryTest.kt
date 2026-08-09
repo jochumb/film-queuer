@@ -5,6 +5,7 @@ import me.jochum.filmqueuer.domain.Department
 import me.jochum.filmqueuer.domain.Person
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -36,7 +37,7 @@ class MySqlPersonRepositoryTest {
     @AfterEach
     fun cleanup() {
         transaction {
-            SchemaUtils.drop(PersonTable)
+            PersonTable.deleteAll()
         }
     }
 
@@ -55,11 +56,13 @@ class MySqlPersonRepositoryTest {
             // When
             val savedPerson = repository.save(person)
 
-            // Then
-            assertEquals(person, savedPerson)
+            // Then - save() fills in the default "Lastname, Firstname" sort name since none was
+            // given
+            val expected = person.copy(sortName = "Doe, John")
+            assertEquals(expected, savedPerson)
 
             val foundPerson = repository.findByTmdbId(123)
-            assertEquals(person, foundPerson)
+            assertEquals(expected, foundPerson)
         }
 
     @Test
@@ -85,9 +88,11 @@ class MySqlPersonRepositoryTest {
             repository.save(person1)
             repository.save(person2) // Should replace the first person
 
-            // Then
+            // Then - name/department/imagePath are replaced, but the sort name computed for
+            // person1 ("Doe, John") is preserved rather than recomputed for person2's name,
+            // matching the same-real-person-refreshed-by-tmdbId semantics save() is built around.
             val foundPerson = repository.findByTmdbId(123)
-            assertEquals(person2, foundPerson) // Should now be the second person
+            assertEquals(person2.copy(sortName = "Doe, John"), foundPerson)
         }
 
     @Test
@@ -117,9 +122,9 @@ class MySqlPersonRepositoryTest {
 
             // Then
             assertEquals(3, allPersons.size)
-            assertTrue(allPersons.contains(person1))
-            assertTrue(allPersons.contains(person2))
-            assertTrue(allPersons.contains(person3))
+            assertTrue(allPersons.contains(person1.copy(sortName = "Doe, John")))
+            assertTrue(allPersons.contains(person2.copy(sortName = "Smith, Jane")))
+            assertTrue(allPersons.contains(person3.copy(sortName = "Writer, Bob")))
         }
 
     @Test
@@ -184,8 +189,8 @@ class MySqlPersonRepositoryTest {
             val foundAfterEnrichment = repository.findByTmdbId(123)
 
             // Then
-            assertEquals(personWithoutImage, foundBeforeEnrichment)
-            assertEquals(personWithImage, foundAfterEnrichment)
+            assertEquals(personWithoutImage.copy(sortName = "Doe, John"), foundBeforeEnrichment)
+            assertEquals(personWithImage.copy(sortName = "Doe, John"), foundAfterEnrichment)
             assertEquals("https://image.tmdb.org/t/p/w200/profile.jpg", foundAfterEnrichment?.imagePath)
         }
 
@@ -204,11 +209,41 @@ class MySqlPersonRepositoryTest {
             // When
             persons.forEach { repository.save(it) }
 
-            // Then
+            // Then - single-word names have no space, so the default sort name equals the name
             persons.forEach { person ->
                 val found = repository.findByTmdbId(person.tmdbId)
-                assertEquals(person, found)
+                assertEquals(person.copy(sortName = person.name), found)
                 assertEquals(person.department, found?.department)
             }
+        }
+
+    @Test
+    fun `updateSortName should overwrite the computed default and survive a later save`() =
+        runBlocking {
+            // Given
+            val person = Person(tmdbId = 1, name = "Guillermo del Toro", department = Department.DIRECTING)
+            repository.save(person) // default sortName becomes "Toro, Guillermo del"
+
+            // When
+            val updated = repository.updateSortName(1, "del Toro")
+
+            // Then
+            assertTrue(updated)
+            assertEquals("del Toro", repository.findByTmdbId(1)?.sortName)
+
+            // And a later re-save (e.g. re-resolving this person from another film match)
+            // must not clobber the manual correction
+            repository.save(person.copy(imagePath = "https://image.tmdb.org/t/p/w200/new.jpg"))
+            assertEquals("del Toro", repository.findByTmdbId(1)?.sortName)
+        }
+
+    @Test
+    fun `updateSortName should return false when person does not exist`() =
+        runBlocking {
+            // When
+            val updated = repository.updateSortName(999, "Nobody")
+
+            // Then
+            assertTrue(!updated)
         }
 }

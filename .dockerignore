@@ -1,0 +1,35 @@
+# Personal data exports (not for version control)
+exports/
+
+# Git
+.git/
+.gitignore
+
+# Gradle build output — critical: without this, stale compiled classes from
+# local `./gradlew` runs get copied into the image and Gradle's up-to-date
+# checks can skip recompiling changed source entirely.
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node.js (frontend tooling — frontend has its own multi-stage build/test)
+node_modules/
+coverage/
+
+# Logs
+*.log

@@ -1,3 +1,6 @@
+# Personal data exports (not for version control)
+exports/
+
 # Gradle
 .gradle/
 build/

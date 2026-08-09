@@ -13,6 +13,14 @@ import {
     renderQueueFilms,
     renderFilmGrid,
     roleLabel,
+    renderCollectionShell,
+    renderCollectionRows,
+    renderPager,
+    renderLinkModal,
+    renderLinkSearchResults,
+    renderQueuePickerModal,
+    renderEditSortNameModal,
+    renderEditSortTitleModal,
 } from './render.js';
 
 const app = document.getElementById('app');
@@ -23,6 +31,22 @@ let currentTab = 'filmography';
 let allFilms = [];
 let averageVoteCount = 0;
 let queuedFilmIds = new Set();
+
+const collectionState = {
+    owned: true,
+    watched: false,
+    unmatchedOnly: false,
+    showRemoved: false,
+    sortField: 'director',
+    sortDescending: false,
+    offset: 0,
+    limit: 40,
+};
+let linkModalItem = null;
+let linkSearchMode = 'movie';
+let queuePickerFilm = null;
+let editSortNameDirector = null;
+let editSortTitleFilm = null;
 
 function refreshIcons() {
     if (typeof feather !== 'undefined') feather.replace();
@@ -40,6 +64,8 @@ function handleRoute() {
         showQueueDetail(path.split('/')[2]);
     } else if (path === '/manage') {
         showManage();
+    } else if (path === '/collection') {
+        showCollection();
     } else {
         showHome();
     }
@@ -471,6 +497,310 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.dataset.panel === tabName));
 }
 
+/* ===== Generic modal manager (for Fix match / Add to queue dialogs) ===== */
+const modalRoot = document.createElement('div');
+document.body.appendChild(modalRoot);
+
+function openModal(html) {
+    modalRoot.innerHTML = html;
+    const overlay = modalRoot.querySelector('.modal-overlay');
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal();
+    });
+    setTimeout(() => overlay.classList.add('modal-show'), 10);
+    return overlay;
+}
+
+function closeModal() {
+    const overlay = modalRoot.querySelector('.modal-overlay');
+    if (!overlay) return;
+    overlay.classList.add('modal-hide');
+    setTimeout(() => { modalRoot.innerHTML = ''; }, 250);
+}
+
+/* ===== Collection ===== */
+function showCollection() {
+    Object.assign(collectionState, {
+        owned: true,
+        watched: false,
+        unmatchedOnly: false,
+        showRemoved: false,
+        sortField: 'director',
+        sortDescending: false,
+        offset: 0,
+    });
+
+    app.innerHTML = renderTopbar('collection') + renderCollectionShell();
+
+    document.getElementById('ownedToggle').addEventListener('change', (e) => {
+        collectionState.owned = e.target.checked;
+        collectionState.offset = 0;
+        loadCollectionPage();
+    });
+    document.getElementById('watchedToggle').addEventListener('change', (e) => {
+        collectionState.watched = e.target.checked;
+        collectionState.offset = 0;
+        loadCollectionPage();
+    });
+    document.getElementById('unmatchedOnlyToggle').addEventListener('change', (e) => {
+        collectionState.unmatchedOnly = e.target.checked;
+        collectionState.offset = 0;
+        loadCollectionPage();
+    });
+    document.getElementById('showRemovedToggle').addEventListener('change', (e) => {
+        collectionState.showRemoved = e.target.checked;
+        collectionState.offset = 0;
+        loadCollectionPage();
+    });
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+        const [field, direction] = e.target.value.split(':');
+        collectionState.sortField = field;
+        collectionState.sortDescending = direction === 'desc';
+        collectionState.offset = 0;
+        loadCollectionPage();
+    });
+    loadCollectionPage();
+}
+
+async function handleRemoveCollectionItem(id, title) {
+    const confirmed = await notifications.confirm(
+        'Remove from collection',
+        `Remove "${title}" from your collection? It won't show up again even if it's still in a Letterboxd export you re-import - you can bring it back later from "Show removed".`,
+        'Remove',
+        'Cancel',
+    );
+    if (!confirmed) return;
+
+    try {
+        const response = await api.setCollectionItemRemoved(id, true);
+        if (response.ok) {
+            notifications.success(`"${title}" removed from your collection.`);
+            loadCollectionPage();
+        } else {
+            notifications.error('Failed to remove the item. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error removing collection item:', error);
+        notifications.error('Failed to remove the item. Please try again.');
+    }
+}
+
+async function handleRestoreCollectionItem(id, title) {
+    try {
+        const response = await api.setCollectionItemRemoved(id, false);
+        if (response.ok) {
+            notifications.success(`"${title}" restored to your collection.`);
+            loadCollectionPage();
+        } else {
+            notifications.error('Failed to restore the item. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error restoring collection item:', error);
+        notifications.error('Failed to restore the item. Please try again.');
+    }
+}
+
+function commitPageJump(inputEl) {
+    const totalPages = Number(inputEl.dataset.totalPages) || 1;
+    let page = Number(inputEl.value);
+    if (!Number.isFinite(page) || page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    collectionState.offset = (page - 1) * collectionState.limit;
+    loadCollectionPage();
+}
+
+async function loadCollectionPage() {
+    const body = document.getElementById('collectionBody');
+    const pagerTop = document.getElementById('collectionPagerTop');
+    const pagerBottom = document.getElementById('collectionPagerBottom');
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="5" class="loading-text">Loading...</td></tr>';
+
+    try {
+        const filters = {
+            offset: collectionState.offset,
+            limit: collectionState.limit,
+            sort: collectionState.sortField,
+            order: collectionState.sortDescending ? 'desc' : 'asc',
+        };
+        if (collectionState.owned) filters.owned = true;
+        if (collectionState.watched) filters.watched = true;
+        if (collectionState.unmatchedOnly) filters.unmatched = true;
+        if (collectionState.showRemoved) filters.removed = true;
+
+        const data = await api.getCollection(filters);
+        body.innerHTML = renderCollectionRows(data.items || []);
+        const pagerHtml = renderPager(data.offset, data.limit, data.total);
+        pagerTop.innerHTML = pagerHtml;
+        pagerBottom.innerHTML = pagerHtml;
+
+        const subtitle = document.getElementById('collectionSubtitle');
+        if (subtitle) {
+            const suffix = collectionState.showRemoved
+                ? ' (removed)'
+                : (collectionState.unmatchedOnly ? ' (unmatched only)' : '');
+            subtitle.textContent = `${data.total} film${data.total === 1 ? '' : 's'}${suffix}`;
+        }
+    } catch (error) {
+        console.error('Error loading collection:', error);
+        body.innerHTML = '<tr><td colspan="5" class="muted-text">Failed to load. Please try again.</td></tr>';
+    }
+}
+
+function openEditSortNameModal(tmdbId, name, sortName) {
+    editSortNameDirector = { tmdbId: Number(tmdbId), name, sortName };
+    openModal(renderEditSortNameModal(editSortNameDirector));
+
+    document.getElementById('sortNameModalClose').addEventListener('click', closeModal);
+    document.getElementById('sortNameModalSave').addEventListener('click', saveSortName);
+    document.getElementById('sortNameInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveSortName();
+    });
+}
+
+async function saveSortName() {
+    if (!editSortNameDirector) return;
+    const sortName = document.getElementById('sortNameInput').value.trim();
+    if (!sortName) {
+        notifications.error('Sort name must not be empty.');
+        return;
+    }
+    try {
+        const response = await api.updateDirectorSortName(editSortNameDirector.tmdbId, sortName);
+        if (response.ok) {
+            notifications.success(`Updated sort name for "${editSortNameDirector.name}".`);
+            closeModal();
+            loadCollectionPage();
+        } else {
+            notifications.error('Failed to update sort name. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error updating sort name:', error);
+        notifications.error('Failed to update sort name. Please try again.');
+    }
+}
+
+function openEditSortTitleModal(tmdbId, title, sortTitle) {
+    editSortTitleFilm = { tmdbId: Number(tmdbId), title, sortTitle };
+    openModal(renderEditSortTitleModal(editSortTitleFilm));
+
+    document.getElementById('sortTitleModalClose').addEventListener('click', closeModal);
+    document.getElementById('sortTitleModalSave').addEventListener('click', saveSortTitle);
+    document.getElementById('sortTitleInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveSortTitle();
+    });
+}
+
+async function saveSortTitle() {
+    if (!editSortTitleFilm) return;
+    const sortTitle = document.getElementById('sortTitleInput').value.trim();
+    if (!sortTitle) {
+        notifications.error('Sort title must not be empty.');
+        return;
+    }
+    try {
+        const response = await api.updateFilmSortTitle(editSortTitleFilm.tmdbId, sortTitle);
+        if (response.ok) {
+            notifications.success(`Updated sort title for "${editSortTitleFilm.title}".`);
+            closeModal();
+            loadCollectionPage();
+        } else {
+            notifications.error('Failed to update sort title. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error updating sort title:', error);
+        notifications.error('Failed to update sort title. Please try again.');
+    }
+}
+
+function openLinkModal(id, title, year) {
+    linkModalItem = { id, title, year: year ? Number(year) : null };
+    linkSearchMode = 'movie';
+    openModal(renderLinkModal(linkModalItem));
+
+    document.getElementById('linkSearchButton').addEventListener('click', performLinkSearch);
+    document.getElementById('linkSearchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performLinkSearch();
+    });
+    document.getElementById('linkYearInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performLinkSearch();
+    });
+    document.getElementById('linkModalClose').addEventListener('click', closeModal);
+    document.querySelectorAll('.link-mode-tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+            linkSearchMode = tab.dataset.linkMode;
+            document.querySelectorAll('.link-mode-tab').forEach((t) => t.classList.toggle('active', t === tab));
+            performLinkSearch();
+        });
+    });
+
+    performLinkSearch();
+}
+
+async function performLinkSearch() {
+    const query = document.getElementById('linkSearchInput').value.trim();
+    const yearValue = document.getElementById('linkYearInput').value.trim();
+    const year = yearValue ? Number(yearValue) : undefined;
+    const results = document.getElementById('linkSearchResults');
+    if (!query) return;
+
+    results.innerHTML = '<p class="loading-text">Searching...</p>';
+    try {
+        const data = linkSearchMode === 'tv' ? await api.searchTv(query, year) : await api.searchMovies(query, year);
+        results.innerHTML = renderLinkSearchResults(data.results || []);
+    } catch (error) {
+        console.error('Error searching for a match:', error);
+        results.innerHTML = '<p class="muted-text">Search failed. Please try again.</p>';
+    }
+}
+
+async function selectLinkMatch(tmdbId, title, tv) {
+    if (!linkModalItem) return;
+    try {
+        const response = await api.linkCollectionItem(linkModalItem.id, tmdbId, tv);
+        if (response.ok) {
+            notifications.success(`Linked to "${title}".`);
+            closeModal();
+            loadCollectionPage();
+        } else {
+            notifications.error('Failed to save the match. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error linking film:', error);
+        notifications.error('Failed to save the match. Please try again.');
+    }
+}
+
+async function openQueuePickerModal(tmdbId, title) {
+    queuePickerFilm = { tmdbId: Number(tmdbId), title };
+
+    try {
+        const queues = await api.getQueues();
+        openModal(renderQueuePickerModal(queues));
+        document.getElementById('queuePickerClose').addEventListener('click', closeModal);
+    } catch (error) {
+        console.error('Error loading queues:', error);
+        notifications.error('Failed to load queues.');
+    }
+}
+
+async function addCollectionFilmToQueue(queueId) {
+    if (!queuePickerFilm) return;
+    try {
+        const response = await api.addFilmToQueue(queueId, { tmdbId: queuePickerFilm.tmdbId });
+        if (response.ok) {
+            notifications.success(`"${queuePickerFilm.title}" added to the queue!`);
+            closeModal();
+        } else {
+            const errorText = await response.text();
+            notifications.error(`Failed to add film: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('Error adding film to queue:', error);
+        notifications.error('Failed to add film. Please try again.');
+    }
+}
+
 /* ===== Global delegated events ===== */
 document.addEventListener('click', (e) => {
     if (e.target.closest('.drag-handle')) return;
@@ -489,7 +819,8 @@ document.addEventListener('click', (e) => {
 
     const navEl = e.target.closest('[data-nav]');
     if (navEl) {
-        navigateTo(navEl.dataset.nav === 'manage' ? '/manage' : '/');
+        const destinations = { home: '/', manage: '/manage', collection: '/collection' };
+        navigateTo(destinations[navEl.dataset.nav] || '/');
         return;
     }
 
@@ -520,6 +851,79 @@ document.addEventListener('click', (e) => {
     const tabBtn = e.target.closest('.tab');
     if (tabBtn) {
         switchTab(tabBtn.dataset.tab);
+        return;
+    }
+
+    const rowMenuToggle = e.target.closest('[data-row-menu-toggle]');
+    if (rowMenuToggle) {
+        const dropdown = rowMenuToggle.closest('.row-menu').querySelector('.row-menu-dropdown');
+        const wasOpen = dropdown.classList.contains('open');
+        document.querySelectorAll('.row-menu-dropdown.open').forEach((d) => d.classList.remove('open'));
+        if (!wasOpen) dropdown.classList.add('open');
+        return;
+    }
+
+    const fixMatchBtn = e.target.closest('.fix-match-btn');
+    if (fixMatchBtn) {
+        openLinkModal(fixMatchBtn.dataset.id, fixMatchBtn.dataset.title, fixMatchBtn.dataset.year);
+        return;
+    }
+
+    const directorNameEl = e.target.closest('[data-edit-sort-name]');
+    if (directorNameEl) {
+        openEditSortNameModal(directorNameEl.dataset.directorId, directorNameEl.dataset.directorName, directorNameEl.dataset.directorSortName);
+        return;
+    }
+
+    const titleNameEl = e.target.closest('[data-edit-sort-title]');
+    if (titleNameEl) {
+        openEditSortTitleModal(titleNameEl.dataset.titleId, titleNameEl.dataset.titleName, titleNameEl.dataset.titleSort);
+        return;
+    }
+
+    const addToQueueBtn = e.target.closest('.add-to-queue-btn');
+    if (addToQueueBtn && !addToQueueBtn.disabled) {
+        openQueuePickerModal(addToQueueBtn.dataset.tmdbId, addToQueueBtn.dataset.title);
+        return;
+    }
+
+    const removeItemBtn = e.target.closest('.remove-item-btn');
+    if (removeItemBtn) {
+        handleRemoveCollectionItem(removeItemBtn.dataset.id, removeItemBtn.dataset.title);
+        return;
+    }
+
+    const restoreItemBtn = e.target.closest('.restore-item-btn');
+    if (restoreItemBtn) {
+        handleRestoreCollectionItem(restoreItemBtn.dataset.id, restoreItemBtn.dataset.title);
+        return;
+    }
+
+    const selectFilmEl = e.target.closest('[data-select-film]');
+    if (selectFilmEl) {
+        selectLinkMatch(Number(selectFilmEl.dataset.selectFilm), selectFilmEl.dataset.selectTitle, selectFilmEl.dataset.selectTv === '1');
+        return;
+    }
+
+    const pickQueueEl = e.target.closest('[data-pick-queue]');
+    if (pickQueueEl) {
+        addCollectionFilmToQueue(pickQueueEl.dataset.pickQueue);
+        return;
+    }
+
+    if (e.target.closest('.pager-prev')) {
+        collectionState.offset = Math.max(0, collectionState.offset - collectionState.limit);
+        loadCollectionPage();
+        return;
+    }
+    if (e.target.closest('.pager-next')) {
+        collectionState.offset += collectionState.limit;
+        loadCollectionPage();
+        return;
+    }
+
+    if (!e.target.closest('.row-menu')) {
+        document.querySelectorAll('.row-menu-dropdown.open').forEach((d) => d.classList.remove('open'));
     }
 });
 
@@ -528,6 +932,19 @@ document.addEventListener('input', (e) => {
         const value = Number(e.target.value);
         document.getElementById('votePercentage').textContent = value;
         applyVoteFilter(value);
+    }
+});
+
+document.addEventListener('change', (e) => {
+    if (e.target.classList && e.target.classList.contains('pager-page-input')) {
+        commitPageJump(e.target);
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.target.classList && e.target.classList.contains('pager-page-input') && e.key === 'Enter') {
+        e.preventDefault();
+        commitPageJump(e.target);
     }
 });
 

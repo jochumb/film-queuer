@@ -8,4 +8,9 @@ interface FilmRepository {
     suspend fun findByTmdbId(tmdbId: Int): Film?
 
     suspend fun findAll(): List<Film>
+
+    suspend fun updateSortTitle(
+        tmdbId: Int,
+        sortTitle: String,
+    ): Boolean
 }

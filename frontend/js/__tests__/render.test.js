@@ -6,6 +6,7 @@ const {
     roleLabel,
     yearOf,
     runtimeLabel,
+    esc,
     queueDisplayName,
     queueSubLabel,
     avatarHtml,
@@ -15,12 +16,24 @@ const {
     renderQueueFilms,
     renderFilmGrid,
     renderDepartmentSelector,
+    renderCollectionRows,
+    renderPager,
+    renderEditSortNameModal,
+    renderEditSortTitleModal,
+    renderLinkModal,
+    renderLinkSearchResults,
 } = require('../render.js');
 
 function parse(html) {
     const container = document.createElement('div');
     container.innerHTML = html;
     return container;
+}
+
+function parseRows(html) {
+    const table = document.createElement('table');
+    table.innerHTML = `<tbody>${html}</tbody>`;
+    return table.querySelector('tbody');
 }
 
 describe('roleLabel', () => {
@@ -67,6 +80,33 @@ describe('runtimeLabel', () => {
         expect(runtimeLabel(0)).toBe('—');
         expect(runtimeLabel(null)).toBe('—');
         expect(runtimeLabel(undefined)).toBe('—');
+    });
+});
+
+describe('esc', () => {
+    test('HTML-escapes an apostrophe so it renders as a real apostrophe, not a literal backslash', () => {
+        const escaped = esc("The Devil's Own");
+        const container = document.createElement('div');
+        container.innerHTML = `<span>${escaped}</span>`;
+        expect(container.textContent).toBe("The Devil's Own");
+        expect(escaped).not.toContain('\\');
+    });
+
+    test('escapes markup-significant characters so untrusted text cannot break out of an attribute or inject tags', () => {
+        expect(esc('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+        expect(esc('Tom & Jerry')).toBe('Tom &amp; Jerry');
+        expect(esc('say "hi"')).toBe('say &quot;hi&quot;');
+    });
+
+    test('round-trips safely inside a double-quoted attribute', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `<span data-title="${esc('Weird " Title')}"></span>`;
+        expect(container.querySelector('span').dataset.title).toBe('Weird " Title');
+    });
+
+    test('treats null/undefined as an empty string', () => {
+        expect(esc(null)).toBe('');
+        expect(esc(undefined)).toBe('');
     });
 });
 
@@ -274,5 +314,189 @@ describe('renderDepartmentSelector', () => {
         const selected = select.querySelector('option[selected]');
         expect(selected.value).toBe('DIRECTING');
         expect(selected.textContent).toBe('Director');
+    });
+});
+
+describe('renderCollectionRows', () => {
+    test('renders a placeholder row when there are no items', () => {
+        const rows = parseRows(renderCollectionRows([]));
+        expect(rows.textContent).toContain('No items found');
+    });
+
+    test('renders a matched item with poster, an editable director name, an editable title, and an enabled add-to-queue button', () => {
+        const items = [{
+            id: 'ref-1',
+            title: 'Fight Club',
+            year: 1999,
+            filmTmdbId: 550,
+            film: {
+                tmdbId: 550,
+                title: 'Fight Club',
+                sortTitle: 'Fight Club',
+                releaseDate: '1999-10-15',
+                posterPath: '/poster.jpg',
+                directors: [{ tmdbId: 7, name: 'David Fincher', sortName: 'Fincher' }],
+            },
+        }];
+        const rows = parseRows(renderCollectionRows(items));
+        const row = rows.querySelector('tr');
+        expect(row.querySelector('.ct-title').textContent).toBe('Fight Club');
+        expect(row.querySelector('.ct-year').textContent).toBe('1999');
+        expect(row.querySelector('.ct-director').textContent).toBe('David Fincher');
+        const directorEl = row.querySelector('.ct-director .director-name');
+        expect(directorEl.dataset.directorId).toBe('7');
+        expect(directorEl.dataset.directorSortName).toBe('Fincher');
+        const titleEl = row.querySelector('.ct-title .editable-title');
+        expect(titleEl.dataset.titleId).toBe('550');
+        expect(titleEl.dataset.titleSort).toBe('Fight Club');
+        expect(row.querySelector('.unmatched-icon')).toBeNull();
+        expect(row.querySelector('.ct-thumb img').getAttribute('src')).toBe('/poster.jpg');
+        expect(row.querySelector('.add-to-queue-btn').hasAttribute('disabled')).toBe(false);
+        expect(row.querySelector('.row-menu-toggle')).not.toBeNull();
+        expect(row.querySelector('.row-menu-dropdown .fix-match-btn')).not.toBeNull();
+    });
+
+    test('renders the sort title (not the display title) as the data attribute for editing', () => {
+        const items = [{
+            id: 'ref-4',
+            title: 'The Godfather',
+            year: 1972,
+            filmTmdbId: 238,
+            film: { tmdbId: 238, title: 'The Godfather', sortTitle: 'Godfather, The', releaseDate: '1972-03-14', posterPath: null },
+        }];
+        const rows = parseRows(renderCollectionRows(items));
+        const titleEl = rows.querySelector('.ct-title .editable-title');
+        expect(titleEl.textContent).toBe('The Godfather');
+        expect(titleEl.dataset.titleSort).toBe('Godfather, The');
+    });
+
+    test('renders multiple directors joined by comma, each individually editable', () => {
+        const items = [{
+            id: 'ref-3',
+            title: 'The Matrix',
+            year: 1999,
+            filmTmdbId: 603,
+            film: {
+                title: 'The Matrix',
+                releaseDate: '1999-03-31',
+                posterPath: null,
+                directors: [
+                    { tmdbId: 1, name: 'Lana Wachowski', sortName: 'Wachowski' },
+                    { tmdbId: 2, name: 'Lilly Wachowski', sortName: 'Wachowski' },
+                ],
+            },
+        }];
+        const rows = parseRows(renderCollectionRows(items));
+        const row = rows.querySelector('tr');
+        expect(row.querySelector('.ct-director').textContent).toBe('Lana Wachowski, Lilly Wachowski');
+        expect(row.querySelectorAll('.ct-director .director-name').length).toBe(2);
+    });
+
+    test('renders an unmatched item using the raw Letterboxd title/year with a disabled add-to-queue button', () => {
+        const items = [{ id: 'ref-2', title: 'Some Obscure Film', year: 1975, filmTmdbId: null, film: null }];
+        const rows = parseRows(renderCollectionRows(items));
+        const row = rows.querySelector('tr');
+        expect(row.querySelector('.ct-title').textContent).toContain('Some Obscure Film');
+        expect(row.querySelector('.ct-title .editable-title')).toBeNull();
+        expect(row.querySelector('.unmatched-icon')).not.toBeNull();
+        expect(row.querySelector('.ct-director').textContent).toBe('—');
+        expect(row.querySelector('.add-to-queue-btn').hasAttribute('disabled')).toBe(true);
+        expect(row.querySelector('.fix-match-btn').dataset.id).toBe('ref-2');
+    });
+
+    test('renders a Remove button for a visible item and a Restore button for a removed one', () => {
+        const items = [
+            { id: 'ref-visible', title: 'Visible Film', year: 2000, filmTmdbId: null, film: null, removed: false },
+            { id: 'ref-hidden', title: 'Hidden Film', year: 2001, filmTmdbId: null, film: null, removed: true },
+        ];
+        const rows = parseRows(renderCollectionRows(items)).querySelectorAll('tr');
+
+        const visibleRow = rows[0];
+        expect(visibleRow.querySelector('.remove-item-btn').dataset.id).toBe('ref-visible');
+        expect(visibleRow.querySelector('.restore-item-btn')).toBeNull();
+
+        const hiddenRow = rows[1];
+        expect(hiddenRow.querySelector('.restore-item-btn').dataset.id).toBe('ref-hidden');
+        expect(hiddenRow.querySelector('.remove-item-btn')).toBeNull();
+    });
+});
+
+describe('renderPager', () => {
+    test('disables Prev on the first page and enables Next when more pages remain', () => {
+        const dom = parse(renderPager(0, 40, 100));
+        expect(dom.querySelector('.pager-prev').hasAttribute('disabled')).toBe(true);
+        expect(dom.querySelector('.pager-next').hasAttribute('disabled')).toBe(false);
+        expect(dom.querySelector('.pager-info').textContent).toBe('1–40 of 100');
+    });
+
+    test('disables Next on the last page', () => {
+        const dom = parse(renderPager(80, 40, 100));
+        expect(dom.querySelector('.pager-prev').hasAttribute('disabled')).toBe(false);
+        expect(dom.querySelector('.pager-next').hasAttribute('disabled')).toBe(true);
+        expect(dom.querySelector('.pager-info').textContent).toBe('81–100 of 100');
+    });
+
+    test('shows a zero-based range and disables both buttons when there are no results', () => {
+        const dom = parse(renderPager(0, 40, 0));
+        expect(dom.querySelector('.pager-info').textContent).toBe('0–0 of 0');
+        expect(dom.querySelector('.pager-prev').hasAttribute('disabled')).toBe(true);
+        expect(dom.querySelector('.pager-next').hasAttribute('disabled')).toBe(true);
+    });
+
+    test('renders a page-jump input reflecting the current page and total pages', () => {
+        const dom = parse(renderPager(80, 40, 100));
+        const input = dom.querySelector('.pager-page-input');
+        expect(input.value).toBe('3');
+        expect(input.getAttribute('max')).toBe('3');
+        expect(input.dataset.totalPages).toBe('3');
+    });
+});
+
+describe('renderEditSortNameModal', () => {
+    test('pre-fills the input with the current sort name', () => {
+        const dom = parse(renderEditSortNameModal({ tmdbId: 7, name: 'David Fincher', sortName: 'Fincher' }));
+        expect(dom.querySelector('.link-modal-source').textContent).toBe('David Fincher');
+        expect(dom.querySelector('#sortNameInput').value).toBe('Fincher');
+    });
+});
+
+describe('renderEditSortTitleModal', () => {
+    test('pre-fills the input with the current sort title', () => {
+        const dom = parse(renderEditSortTitleModal({ tmdbId: 238, title: 'The Godfather', sortTitle: 'Godfather, The' }));
+        expect(dom.querySelector('.link-modal-source').textContent).toBe('The Godfather');
+        expect(dom.querySelector('#sortTitleInput').value).toBe('Godfather, The');
+    });
+});
+
+describe('renderLinkModal', () => {
+    test('pre-fills the title and year, and defaults to the Movies tab', () => {
+        const dom = parse(renderLinkModal({ id: 'ref-1', title: 'Chernobyl', year: 2019 }));
+        expect(dom.querySelector('#linkSearchInput').value).toBe('Chernobyl');
+        expect(dom.querySelector('#linkYearInput').value).toBe('2019');
+        expect(dom.querySelector('[data-link-mode="movie"]').classList.contains('active')).toBe(true);
+        expect(dom.querySelector('[data-link-mode="tv"]').classList.contains('active')).toBe(false);
+    });
+
+    test('leaves the year input blank when the item has no known year', () => {
+        const dom = parse(renderLinkModal({ id: 'ref-2', title: 'Some Obscure Film', year: null }));
+        expect(dom.querySelector('#linkYearInput').value).toBe('');
+    });
+});
+
+describe('renderLinkSearchResults', () => {
+    test('tags each result tile with its media type so the right link mode is used on selection', () => {
+        const films = [
+            { id: 87108, title: 'Chernobyl', releaseDate: '2019-05-06', posterPath: null, tv: true },
+            { id: 550, title: 'Fight Club', releaseDate: '1999-10-15', posterPath: null, tv: false },
+        ];
+        const dom = parse(renderLinkSearchResults(films));
+        const tiles = dom.querySelectorAll('.link-result-tile');
+        expect(tiles[0].dataset.selectTv).toBe('1');
+        expect(tiles[1].dataset.selectTv).toBe('0');
+    });
+
+    test('renders a message when there are no results', () => {
+        const dom = parse(renderLinkSearchResults([]));
+        expect(dom.textContent).toContain('No results');
     });
 });

@@ -3,9 +3,15 @@ package me.jochum.filmqueuer.adapters.tmdb
 interface TmdbService {
     suspend fun searchPerson(query: String): TmdbPersonSearchResponse
 
-    suspend fun searchMovies(query: String): TmdbMovieSearchResponse
+    suspend fun searchMovies(
+        query: String,
+        year: Int? = null,
+    ): TmdbMovieSearchResponse
 
-    suspend fun searchTv(query: String): TmdbTvSearchResponse
+    suspend fun searchTv(
+        query: String,
+        year: Int? = null,
+    ): TmdbTvSearchResponse
 
     suspend fun getPersonMovieCredits(personId: Int): TmdbPersonCreditsResponse
 

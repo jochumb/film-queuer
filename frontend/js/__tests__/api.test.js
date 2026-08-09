@@ -61,6 +61,24 @@ describe('read endpoints', () => {
         await api.searchTv('breaking bad');
         expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/search/tv?q=breaking%20bad`);
     });
+
+    test('searchMovies and searchTv forward a year filter when given', async () => {
+        await api.searchMovies('Dune', 1984);
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/search?q=Dune&year=1984`);
+
+        await api.searchTv('Chernobyl', 2019);
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/search/tv?q=Chernobyl&year=2019`);
+    });
+
+    test('getCollection omits filters that are not given', async () => {
+        await api.getCollection();
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection?offset=0&limit=40`);
+    });
+
+    test('getCollection forwards the removed filter to view hidden items', async () => {
+        await api.getCollection({ removed: true });
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection?offset=0&limit=40&removed=true`);
+    });
 });
 
 describe('write endpoints', () => {
@@ -125,6 +143,49 @@ describe('write endpoints', () => {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ department: 'DIRECTING' }),
+        });
+    });
+
+    test('updateDirectorSortName PUTs the new sort name', async () => {
+        await api.updateDirectorSortName(7, 'del Toro');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/persons/7/sort-name`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sortName: 'del Toro' }),
+        });
+    });
+
+    test('setCollectionItemRemoved PUTs the removed flag', async () => {
+        await api.setCollectionItemRemoved('ref-1', true);
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/ref-1/removed`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ removed: true }),
+        });
+    });
+
+    test('linkCollectionItem PUTs tmdbId and tv (defaulting tv to false)', async () => {
+        await api.linkCollectionItem('ref-1', 550);
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/ref-1/link`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tmdbId: 550, tv: false }),
+        });
+
+        await api.linkCollectionItem('ref-2', 87108, true);
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/ref-2/link`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tmdbId: 87108, tv: true }),
+        });
+    });
+
+    test('updateFilmSortTitle PUTs the new sort title', async () => {
+        await api.updateFilmSortTitle(238, 'Godfather, The');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/238/sort-title`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sortTitle: 'Godfather, The' }),
         });
     });
 });

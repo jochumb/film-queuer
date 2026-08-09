@@ -28,7 +28,7 @@ class MySqlQueueFilmRepositoryTest {
     fun setup() {
         Database.connect("jdbc:h2:mem:test;MODE=MySQL;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
         transaction {
-            SchemaUtils.create(FilmTable, QueueTable, QueueFilmTable)
+            SchemaUtils.create(PersonTable, FilmTable, QueueTable, QueueFilmTable)
         }
         repository = MySqlQueueFilmRepository()
         filmRepository = MySqlFilmRepository()
@@ -40,6 +40,7 @@ class MySqlQueueFilmRepositoryTest {
             QueueFilmTable.deleteAll()
             FilmTable.deleteAll()
             QueueTable.deleteAll()
+            PersonTable.deleteAll()
         }
     }
 

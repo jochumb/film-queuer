@@ -108,6 +108,58 @@ data class TmdbMovieDetails(
     val genres: List<TmdbGenre> = emptyList(),
     @SerialName("poster_path")
     val posterPath: String? = null,
+    val credits: TmdbCredits? = null,
+    @SerialName("release_dates")
+    val releaseDates: TmdbReleaseDatesResponse? = null,
+) {
+    // TMDB's top-level `release_date` is an editorially-chosen "primary" date whose accuracy
+    // varies per film; it isn't reliably the film's true original release. This instead takes
+    // the earliest Theatrical/Theatrical-limited date (type 2 or 3) across every country TMDB
+    // has release_dates for - matching how Letterboxd defines a film's "Year" - and excludes
+    // festival premieres (type 1) and digital/physical/TV dates (4-6), which don't count as the
+    // original release. Falls back to the top-level field if release_dates has nothing usable.
+    fun originalReleaseDate(): String? =
+        releaseDates?.results
+            ?.asSequence()
+            ?.flatMap { it.releaseDates.asSequence() }
+            ?.filter { it.type == 2 || it.type == 3 }
+            ?.mapNotNull { it.releaseDate?.take(10) }
+            ?.minOrNull()
+            ?: releaseDate
+}
+
+@Serializable
+data class TmdbReleaseDatesResponse(
+    val results: List<TmdbCountryReleaseDates> = emptyList(),
+)
+
+@Serializable
+data class TmdbCountryReleaseDates(
+    @SerialName("iso_3166_1")
+    val country: String,
+    @SerialName("release_dates")
+    val releaseDates: List<TmdbReleaseDateEntry> = emptyList(),
+)
+
+@Serializable
+data class TmdbReleaseDateEntry(
+    val type: Int,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+)
+
+@Serializable
+data class TmdbCredits(
+    val crew: List<TmdbCrewMember> = emptyList(),
+)
+
+@Serializable
+data class TmdbCrewMember(
+    val id: Int,
+    val name: String,
+    val job: String,
+    @SerialName("profile_path")
+    val profilePath: String? = null,
 )
 
 @Serializable
@@ -188,6 +240,43 @@ data class TmdbTvDetails(
     val genres: List<TmdbGenre> = emptyList(),
     @SerialName("poster_path")
     val posterPath: String? = null,
+    @SerialName("aggregate_credits")
+    val aggregateCredits: TmdbAggregateCredits? = null,
+) {
+    // TV credits don't have a single "Director" job the way a movie's /credits does - each
+    // episode has its own crew. aggregate_credits rolls every episode's crew up across the whole
+    // series, so this finds everyone ever credited as "Director" and ranks them by how many
+    // episodes they directed - the show's most-consistent director (often the only one, for a
+    // typical mini-series) leads the list, matching the "primary director" concept used for
+    // co-directed movies.
+    fun directorCrew(): List<TmdbAggregateCrewMember> =
+        aggregateCredits?.crew
+            ?.filter { member -> member.jobs.any { it.job == "Director" } }
+            ?.sortedByDescending { it.totalEpisodeCount }
+            ?: emptyList()
+}
+
+@Serializable
+data class TmdbAggregateCredits(
+    val crew: List<TmdbAggregateCrewMember> = emptyList(),
+)
+
+@Serializable
+data class TmdbAggregateCrewMember(
+    val id: Int,
+    val name: String,
+    @SerialName("profile_path")
+    val profilePath: String? = null,
+    val jobs: List<TmdbAggregateCrewJob> = emptyList(),
+    @SerialName("total_episode_count")
+    val totalEpisodeCount: Int = 0,
+)
+
+@Serializable
+data class TmdbAggregateCrewJob(
+    val job: String,
+    @SerialName("episode_count")
+    val episodeCount: Int = 0,
 )
 
 @Serializable

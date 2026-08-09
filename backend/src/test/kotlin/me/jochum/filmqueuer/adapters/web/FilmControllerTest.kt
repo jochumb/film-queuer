@@ -1,8 +1,12 @@
 package me.jochum.filmqueuer.adapters.web
 
 import io.ktor.client.request.get
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
@@ -16,6 +20,7 @@ import me.jochum.filmqueuer.adapters.tmdb.TmdbMovieSearchResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.adapters.tmdb.TmdbTvSearchResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbTvShow
+import me.jochum.filmqueuer.domain.FilmRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -23,10 +28,12 @@ import kotlin.test.assertTrue
 
 class FilmControllerTest {
     private lateinit var tmdbService: TmdbService
+    private lateinit var filmRepository: FilmRepository
 
     @BeforeEach
     fun setup() {
         tmdbService = mockk()
+        filmRepository = mockk()
     }
 
     @Test
@@ -41,7 +48,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // Given
@@ -79,6 +86,26 @@ class FilmControllerTest {
         }
 
     @Test
+    fun `GET films search should forward the year parameter to narrow ambiguous titles`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository)
+            }
+
+            coEvery { tmdbService.searchMovies("Dune", 1984) } returns
+                TmdbMovieSearchResponse(page = 1, totalPages = 1, totalResults = 1, results = listOf(TmdbMovie(id = 841, title = "Dune")))
+
+            val response = client.get("/films/search?q=Dune&year=1984")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            coVerify { tmdbService.searchMovies("Dune", 1984) }
+        }
+
+    @Test
     fun `GET films search tv should return TV show search results`() =
         testApplication {
             install(ContentNegotiation) {
@@ -90,7 +117,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // Given
@@ -128,10 +155,35 @@ class FilmControllerTest {
         }
 
     @Test
+    fun `GET films search tv should forward the year parameter so mini-series aren't buried in results`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository)
+            }
+
+            coEvery { tmdbService.searchTv("Chernobyl", 2019) } returns
+                TmdbTvSearchResponse(
+                    page = 1,
+                    totalPages = 1,
+                    totalResults = 1,
+                    results = listOf(TmdbTvShow(id = 87108, name = "Chernobyl")),
+                )
+
+            val response = client.get("/films/search/tv?q=Chernobyl&year=2019")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            coVerify { tmdbService.searchTv("Chernobyl", 2019) }
+        }
+
+    @Test
     fun `GET films search should return bad request when query parameter is missing`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // When
@@ -146,7 +198,7 @@ class FilmControllerTest {
     fun `GET films search tv should return bad request when query parameter is missing`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // When
@@ -161,7 +213,7 @@ class FilmControllerTest {
     fun `GET films search should handle TMDB service errors for movies`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // Given
@@ -179,7 +231,7 @@ class FilmControllerTest {
     fun `GET films search tv should handle TMDB service errors for TV shows`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // Given
@@ -205,7 +257,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // Given
@@ -243,7 +295,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService)
+                configureFilmRoutes(tmdbService, filmRepository)
             }
 
             // Given
@@ -267,5 +319,71 @@ class FilmControllerTest {
             val responseBody = response.bodyAsText()
             assertTrue(responseBody.contains("\"totalResults\":0"))
             assertTrue(responseBody.contains("\"results\":[]"))
+        }
+
+    @Test
+    fun `PUT films sort-title should update the sort title`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository)
+            }
+
+            coEvery { filmRepository.updateSortTitle(550, "Godfather, The") } returns true
+
+            val response =
+                client.put("/films/550/sort-title") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"sortTitle": "Godfather, The"}""")
+                }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            coVerify { filmRepository.updateSortTitle(550, "Godfather, The") }
+        }
+
+    @Test
+    fun `PUT films sort-title should return not found when the film does not exist`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository)
+            }
+
+            coEvery { filmRepository.updateSortTitle(999, "Anything") } returns false
+
+            val response =
+                client.put("/films/999/sort-title") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"sortTitle": "Anything"}""")
+                }
+
+            assertEquals(HttpStatusCode.NotFound, response.status)
+        }
+
+    @Test
+    fun `PUT films sort-title should reject a blank sort title`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository)
+            }
+
+            val response =
+                client.put("/films/550/sort-title") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"sortTitle": "   "}""")
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            coVerify(exactly = 0) { filmRepository.updateSortTitle(any(), any()) }
         }
 }

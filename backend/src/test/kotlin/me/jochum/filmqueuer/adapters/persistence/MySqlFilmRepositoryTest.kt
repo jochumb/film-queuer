@@ -23,7 +23,7 @@ class MySqlFilmRepositoryTest {
     fun setup() {
         Database.connect("jdbc:h2:mem:test;MODE=MySQL;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
         transaction {
-            SchemaUtils.create(FilmTable)
+            SchemaUtils.create(PersonTable, FilmTable, FilmDirectorTable)
         }
         repository = MySqlFilmRepository()
     }
@@ -31,7 +31,9 @@ class MySqlFilmRepositoryTest {
     @AfterEach
     fun cleanup() {
         transaction {
+            FilmDirectorTable.deleteAll()
             FilmTable.deleteAll()
+            PersonTable.deleteAll()
         }
     }
 
@@ -53,13 +55,15 @@ class MySqlFilmRepositoryTest {
             // When
             val result = repository.save(film)
 
-            // Then
-            assertEquals(film, result)
+            // Then - save() fills in the default sort title ("Fight Club" has no leading
+            // article, so it's unchanged) since none was given
+            val expected = film.copy(sortTitle = "Fight Club")
+            assertEquals(expected, result)
 
             // Verify it was saved with detailed field validation
             val found = repository.findByTmdbId(550)
             assertNotNull(found)
-            assertEquals(film, found)
+            assertEquals(expected, found)
 
             // Additional detailed field assertions
             assertEquals(550, found.tmdbId)
@@ -112,6 +116,9 @@ class MySqlFilmRepositoryTest {
             assertEquals(film2.runtime, found.runtime) // Should have updated runtime
             assertEquals(film2.genres, found.genres) // Should have updated genres
             assertEquals(film2.posterPath, found.posterPath) // Should have updated poster path
+            // sortTitle is preserved from film1's computed default, not recomputed from
+            // film2's title, mirroring MySqlPersonRepository's update() semantics
+            assertEquals("Fight Club", found.sortTitle)
         }
 
     @Test
@@ -141,7 +148,7 @@ class MySqlFilmRepositoryTest {
 
             // Then
             assertNotNull(result)
-            assertEquals(film, result)
+            assertEquals(film.copy(sortTitle = "Fight Club"), result)
         }
 
     @Test
@@ -193,9 +200,9 @@ class MySqlFilmRepositoryTest {
             // When
             val result = repository.findAll()
 
-            // Then
+            // Then - "The Godfather" gets its leading article stripped for the default sort title
             assertEquals(3, result.size)
-            assertTrue(result.containsAll(films))
+            assertTrue(result.containsAll(films.map { it.copy(sortTitle = Film.defaultSortTitle(it.title)) }))
         }
 
     @Test
@@ -227,7 +234,7 @@ class MySqlFilmRepositoryTest {
             val result = repository.save(film)
 
             // Then
-            assertEquals(film, result)
+            assertEquals(film.copy(sortTitle = "Fight Club"), result)
 
             val found = repository.findByTmdbId(550)
             assertNotNull(found)
@@ -236,5 +243,35 @@ class MySqlFilmRepositoryTest {
             assertNull(found.runtime)
             assertNull(found.genres)
             assertNull(found.posterPath)
+        }
+
+    @Test
+    fun `updateSortTitle should overwrite the computed default and survive a later save`() =
+        runBlocking {
+            // Given
+            val film = Film(tmdbId = 550, title = "The Godfather")
+            repository.save(film) // default sortTitle becomes "Godfather"
+
+            // When
+            val updated = repository.updateSortTitle(550, "Godfather, The")
+
+            // Then
+            assertTrue(updated)
+            assertEquals("Godfather, The", repository.findByTmdbId(550)?.sortTitle)
+
+            // And a later re-save (e.g. this film being added to another queue) must not
+            // clobber the manual correction
+            repository.save(film)
+            assertEquals("Godfather, The", repository.findByTmdbId(550)?.sortTitle)
+        }
+
+    @Test
+    fun `updateSortTitle should return false when film does not exist`() =
+        runBlocking {
+            // When
+            val updated = repository.updateSortTitle(999, "Nothing")
+
+            // Then
+            assertFalse(updated)
         }
 }
