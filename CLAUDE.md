@@ -55,17 +55,14 @@ backend/src/main/kotlin/me/jochum/filmqueuer/
 ### Frontend Structure
 ```
 frontend/
-├── index.html                  # Main HTML page
+├── index.html                  # Main HTML page (single #app mount point)
 ├── css/
-│   └── style.css              # Application styles (includes drag-and-drop + notifications)
+│   └── style.css              # Application styles (design tokens, compact dark/light theme)
 └── js/
-    ├── app.js                 # Main JavaScript entry point
-    ├── api.js                 # API client with queue reordering endpoints
-    ├── search.js              # Person search functionality
-    ├── queue.js               # Queue management and film operations
-    ├── ui.js                  # UI rendering and display logic
-    ├── navigation.js          # SPA routing and navigation
-    ├── dragdrop.js            # Drag-and-drop functionality for queues and films
+    ├── app.js                 # Entry point: routing, state, event delegation, all page logic
+    ├── render.js               # HTML template functions (home/manage/queue-detail views)
+    ├── api.js                 # API client
+    ├── dragdrop.js             # Drag-and-drop reordering helper (queues and queue films)
     └── notifications.js       # Toast notifications and modal confirmations
 ```
 
@@ -203,15 +200,13 @@ DATABASE_PASSWORD=password
 - **Format code**: `./gradlew :backend:format`
 
 ### Frontend
-- **Run tests**: `cd frontend && npm test`
-- **Test with coverage**: `cd frontend && npm run test:ci`
-- **Watch mode**: `cd frontend && npm run test:watch`
+- No build step or test command — static HTML/CSS/JS served directly. Serve locally with e.g.
+  `cd frontend && python3 -m http.server 3000`, or via Docker (see below).
 
 ### Docker
 - **Run with Docker**: `docker-compose up --build`
   - Backend: http://localhost:8080
   - Frontend: http://localhost:3000
-  - **Note**: Frontend tests run automatically during Docker build
 
 ## Code Quality & Testing
 
@@ -223,16 +218,10 @@ DATABASE_PASSWORD=password
   - Controller tests with Ktor testing framework
 - **Architecture**: Hexagonal architecture with dependency injection
 
-### Frontend Testing  
-- **Test Framework**: Jest with JSDOM for DOM simulation
-- **Coverage**: 51 tests across 4 test suites
-  - **search.test.js**: Department translation, search workflow, person selection (18 tests)
-  - **dragdrop.test.js**: Drag-and-drop functionality for films and queues (14 tests) 
-  - **notifications.test.js**: Toast notifications and modal confirmations (13 tests)
-  - **navigation.test.js**: URL parsing and module structure (6 tests)
-- **Mocking**: APIs, browser storage, DOM elements, and external dependencies
-- **CI Integration**: Tests run automatically in Docker builds
-- **Manual QA**: Drag-and-drop functionality, visual queue indicators
+### Frontend Testing
+- No automated test suite currently exists for the frontend (no build/test tooling — plain
+  static HTML/CSS/JS served directly by nginx). Verify frontend changes manually in a browser.
+- **Manual QA**: Drag-and-drop functionality, visual queue indicators, add/remove/watched flows
 
 ## Development Notes
 

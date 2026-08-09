@@ -1,35 +1,17 @@
 const API_BASE = 'http://localhost:8080/api';
 
 export const api = {
-    async testConnection() {
-        try {
-            const response = await fetch('http://localhost:8080/');
-            const text = await response.text();
-            console.log('Backend connection:', text);
-        } catch (error) {
-            console.error('Backend connection failed:', error);
-        }
-    },
-
     async searchPersons(query) {
         const response = await fetch(`${API_BASE}/persons/search?q=${encodeURIComponent(query)}`);
         return response.json();
     },
 
     async selectPerson(tmdbId, name, department, imagePath) {
-        const response = await fetch(`${API_BASE}/persons/select`, {
+        return fetch(`${API_BASE}/persons/select`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                tmdbId: tmdbId,
-                name: name,
-                department: department,
-                imagePath: imagePath
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tmdbId, name, department, imagePath }),
         });
-        return response;
     },
 
     async getQueues() {
@@ -40,6 +22,10 @@ export const api = {
     async getQueue(queueId) {
         const response = await fetch(`${API_BASE}/queues/${queueId}`);
         return response.json();
+    },
+
+    async deleteQueue(queueId) {
+        return fetch(`${API_BASE}/queues/${queueId}`, { method: 'DELETE' });
     },
 
     async getPersonFilmography(personTmdbId, department) {
@@ -53,79 +39,52 @@ export const api = {
     },
 
     async addFilmToQueue(queueId, filmData) {
-        const response = await fetch(`${API_BASE}/queues/${queueId}/films`, {
+        return fetch(`${API_BASE}/queues/${queueId}/films`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(filmData)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(filmData),
         });
-        return response;
     },
 
     async removeFilmFromQueue(queueId, filmId) {
-        const response = await fetch(`${API_BASE}/queues/${queueId}/films/${filmId}`, {
-            method: 'DELETE'
-        });
-        return response;
+        return fetch(`${API_BASE}/queues/${queueId}/films/${filmId}`, { method: 'DELETE' });
     },
 
     async reorderQueueFilms(queueId, filmOrder) {
-        const response = await fetch(`${API_BASE}/queues/${queueId}/films/reorder`, {
+        return fetch(`${API_BASE}/queues/${queueId}/films/reorder`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                filmOrder: filmOrder
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filmOrder }),
         });
-        return response;
     },
 
     async reorderQueues(queueOrder) {
-        const response = await fetch(`${API_BASE}/queues/reorder`, {
+        return fetch(`${API_BASE}/queues/reorder`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                queueOrder: queueOrder
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ queueOrder }),
         });
-        return response;
     },
 
-    async getQueuePreviews(limit = 9, filmsLimit = 3) {
+    async getQueuePreviews(limit = 9, filmsLimit = 4) {
         const response = await fetch(`${API_BASE}/queues/previews?limit=${limit}&filmsLimit=${filmsLimit}`);
         return response.json();
     },
 
     async createNamedQueue(name, description = null) {
-        const response = await fetch(`${API_BASE}/queues/named`, {
+        return fetch(`${API_BASE}/queues/named`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: name,
-                description: description
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description }),
         });
-        return response;
     },
 
     async updatePersonDepartment(personTmdbId, department) {
-        const response = await fetch(`${API_BASE}/persons/${personTmdbId}/department`, {
+        return fetch(`${API_BASE}/persons/${personTmdbId}/department`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                department: department
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ department }),
         });
-        return response;
     },
 
     async searchMovies(query) {
@@ -136,5 +95,5 @@ export const api = {
     async searchTv(query) {
         const response = await fetch(`${API_BASE}/films/search/tv?q=${encodeURIComponent(query)}`);
         return response.json();
-    }
+    },
 };
