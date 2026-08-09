@@ -65,6 +65,7 @@ class QueueControllerTest {
 
             coEvery { queueRepository.findAll() } returns listOf(personQueue)
             coEvery { personRepository.findByTmdbId(123) } returns person
+            coEvery { queueFilmService.getQueueFilms(queueId) } returns emptyList()
 
             application {
                 configureSerialization()
@@ -103,6 +104,7 @@ class QueueControllerTest {
 
             coEvery { queueRepository.findAll() } returns listOf(personQueue)
             coEvery { personRepository.findByTmdbId(999) } returns null
+            coEvery { queueFilmService.getQueueFilms(queueId) } returns emptyList()
 
             application {
                 configureSerialization()
@@ -166,6 +168,8 @@ class QueueControllerTest {
             coEvery { queueRepository.findAll() } returns listOf(queue1, queue2)
             coEvery { personRepository.findByTmdbId(123) } returns person1
             coEvery { personRepository.findByTmdbId(456) } returns person2
+            coEvery { queueFilmService.getQueueFilms(queue1Id) } returns emptyList()
+            coEvery { queueFilmService.getQueueFilms(queue2Id) } returns emptyList()
 
             application {
                 configureSerialization()
@@ -247,6 +251,7 @@ class QueueControllerTest {
 
             coEvery { queueRepository.findById(queueId) } returns personQueue
             coEvery { personRepository.findByTmdbId(123) } returns person
+            coEvery { queueFilmService.getQueueFilms(queueId) } returns emptyList()
 
             application {
                 configureSerialization()
@@ -1059,6 +1064,7 @@ class QueueControllerTest {
             coEvery { queueRepository.reorderQueues(queueOrder) } returns true
             // Verify that after reordering, findAll returns queues in new order
             coEvery { queueRepository.findAll() } returns reorderedQueues
+            coEvery { queueFilmService.getQueueFilms(any()) } returns emptyList()
 
             application {
                 configureSerialization()
@@ -1212,6 +1218,7 @@ class QueueControllerTest {
 
             coEvery { queueRepository.findAll() } returns listOf(personQueue, namedQueue)
             coEvery { personRepository.findByTmdbId(123) } returns person
+            coEvery { queueFilmService.getQueueFilms(any()) } returns emptyList()
 
             application {
                 configureSerialization()

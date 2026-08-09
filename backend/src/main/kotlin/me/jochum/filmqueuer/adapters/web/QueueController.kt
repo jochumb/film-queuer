@@ -20,6 +20,7 @@ import java.util.UUID
 private suspend fun mapQueueToDto(
     queue: me.jochum.filmqueuer.domain.Queue,
     personRepository: PersonRepository,
+    filmCount: Int = 0,
 ): QueueDto {
     return when (queue) {
         is PersonQueue -> {
@@ -39,6 +40,7 @@ private suspend fun mapQueueToDto(
                     },
                 name = null,
                 description = null,
+                filmCount = filmCount,
             )
         }
         is NamedQueue ->
@@ -49,6 +51,7 @@ private suspend fun mapQueueToDto(
                 person = null,
                 name = queue.name,
                 description = queue.description,
+                filmCount = filmCount,
             )
         else ->
             QueueDto(
@@ -58,6 +61,7 @@ private suspend fun mapQueueToDto(
                 person = null,
                 name = null,
                 description = null,
+                filmCount = filmCount,
             )
     }
 }
@@ -71,7 +75,11 @@ fun Route.configureQueueRoutes(
         get {
             try {
                 val queues = queueRepository.findAll()
-                val result = queues.map { queue -> mapQueueToDto(queue, personRepository) }
+                val result =
+                    queues.map { queue ->
+                        val filmCount = queueFilmService.getQueueFilms(queue.id).size
+                        mapQueueToDto(queue, personRepository, filmCount)
+                    }
                 call.respond(result)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to fetch queues: ${e.message}")
@@ -94,7 +102,8 @@ fun Route.configureQueueRoutes(
                     return@get
                 }
 
-                val result = mapQueueToDto(queue, personRepository)
+                val filmCount = queueFilmService.getQueueFilms(queue.id).size
+                val result = mapQueueToDto(queue, personRepository, filmCount)
                 call.respond(result)
             } catch (e: IllegalArgumentException) {
                 call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
@@ -270,7 +279,7 @@ fun Route.configureQueueRoutes(
                     queues.map { queue ->
                         val films = queueFilmService.getQueueFilms(queue.id).take(filmsLimit)
                         val totalFilms = queueFilmService.getQueueFilms(queue.id).size
-                        val queueDto = mapQueueToDto(queue, personRepository)
+                        val queueDto = mapQueueToDto(queue, personRepository, totalFilms)
 
                         val filmsDto =
                             films.map { film ->

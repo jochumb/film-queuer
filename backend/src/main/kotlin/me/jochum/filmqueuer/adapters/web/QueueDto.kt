@@ -10,6 +10,7 @@ data class QueueDto(
     val person: SavedPersonDto? = null,
     val name: String? = null,
     val description: String? = null,
+    val filmCount: Int = 0,
 )
 
 @Serializable
