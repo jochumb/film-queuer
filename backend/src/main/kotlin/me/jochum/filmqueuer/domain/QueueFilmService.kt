@@ -140,4 +140,6 @@ class QueueFilmService(
         queueId: UUID,
         filmOrder: List<Int>,
     ): Boolean = queueFilmRepository.reorderQueueFilms(queueId, filmOrder)
+
+    suspend fun clearQueue(queueId: UUID): Boolean = queueFilmRepository.deleteAllForQueue(queueId)
 }

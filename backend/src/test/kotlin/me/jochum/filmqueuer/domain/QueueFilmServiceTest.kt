@@ -593,4 +593,20 @@ class QueueFilmServiceTest {
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
             coVerify(exactly = 0) { tmdbService.getTvSeasonDetails(tmdbId, 0) }
         }
+
+    @Test
+    fun `clearQueue should delegate to repository`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+
+            coEvery { queueFilmRepository.deleteAllForQueue(queueId) } returns true
+
+            // When
+            val result = service.clearQueue(queueId)
+
+            // Then
+            assertTrue(result)
+            coVerify { queueFilmRepository.deleteAllForQueue(queueId) }
+        }
 }

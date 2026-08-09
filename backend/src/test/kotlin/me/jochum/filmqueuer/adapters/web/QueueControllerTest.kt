@@ -314,6 +314,102 @@ class QueueControllerTest {
         }
 
     @Test
+    fun `DELETE queue should remove queue and its films successfully`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val personQueue = PersonQueue(queueId, 123, Instant.now())
+
+            coEvery { queueRepository.findById(queueId) } returns personQueue
+            coEvery { queueFilmService.clearQueue(queueId) } returns true
+            coEvery { queueRepository.deleteById(queueId) } returns true
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.bodyAsText().contains("Queue deleted successfully"))
+
+            coVerify { queueRepository.findById(queueId) }
+            coVerify { queueFilmService.clearQueue(queueId) }
+            coVerify { queueRepository.deleteById(queueId) }
+        }
+
+    @Test
+    fun `DELETE queue should return 404 for non-existent queue`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            coEvery { queueRepository.findById(queueId) } returns null
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId")
+
+            // Then
+            assertEquals(HttpStatusCode.NotFound, response.status)
+            assertTrue(response.bodyAsText().contains("Queue not found"))
+
+            coVerify { queueRepository.findById(queueId) }
+            coVerify(exactly = 0) { queueRepository.deleteById(any()) }
+        }
+
+    @Test
+    fun `DELETE queue should return 400 for invalid queue ID`() =
+        testApplication {
+            // Given
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/invalid-uuid")
+
+            // Then
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid queue ID"))
+        }
+
+    @Test
+    fun `DELETE queue should handle repository errors`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            coEvery { queueRepository.findById(queueId) } throws RuntimeException("Database Error")
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                }
+            }
+
+            // When
+            val response = client.delete("/queues/$queueId")
+
+            // Then
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            assertTrue(response.bodyAsText().contains("Failed to delete queue"))
+        }
+
+    @Test
     fun `POST queue films should add film to queue successfully`() =
         testApplication {
             // Given

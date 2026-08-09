@@ -24,4 +24,6 @@ interface QueueFilmRepository {
         queueId: UUID,
         filmOrder: List<Int>,
     ): Boolean
+
+    suspend fun deleteAllForQueue(queueId: UUID): Boolean
 }

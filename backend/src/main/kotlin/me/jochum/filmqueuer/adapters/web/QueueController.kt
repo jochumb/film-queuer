@@ -103,6 +103,32 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        delete("/{queueId}") {
+            try {
+                val queueIdString = call.parameters["queueId"]
+                if (queueIdString == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue ID is required")
+                    return@delete
+                }
+
+                val queueId = UUID.fromString(queueIdString)
+                val queue = queueRepository.findById(queueId)
+
+                if (queue == null) {
+                    call.respond(HttpStatusCode.NotFound, "Queue not found")
+                    return@delete
+                }
+
+                queueFilmService.clearQueue(queueId)
+                queueRepository.deleteById(queueId)
+                call.respond(HttpStatusCode.OK, "Queue deleted successfully")
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to delete queue: ${e.message}")
+            }
+        }
+
         post("/{queueId}/films") {
             try {
                 val queueIdString = call.parameters["queueId"]

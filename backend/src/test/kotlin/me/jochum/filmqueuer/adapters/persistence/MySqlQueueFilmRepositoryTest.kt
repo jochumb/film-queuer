@@ -614,6 +614,64 @@ class MySqlQueueFilmRepositoryTest {
         }
     }
 
+    @Test
+    fun `deleteAllForQueue should remove all films for the queue`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val otherQueueId = UUID.randomUUID()
+            val film1 =
+                Film(
+                    550,
+                    "Fight Club",
+                    "Fight Club",
+                    LocalDate.of(1999, 10, 15),
+                    139,
+                    listOf("Drama", "Thriller"),
+                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                )
+            val film2 =
+                Film(
+                    238,
+                    "The Godfather",
+                    "The Godfather",
+                    LocalDate.of(1972, 3, 14),
+                    175,
+                    listOf("Drama", "Crime"),
+                    "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                )
+
+            filmRepository.save(film1)
+            filmRepository.save(film2)
+            createTestQueue(queueId)
+            createTestQueue(otherQueueId)
+            repository.addFilmToQueue(queueId, film1.tmdbId)
+            repository.addFilmToQueue(queueId, film2.tmdbId)
+            repository.addFilmToQueue(otherQueueId, film1.tmdbId)
+
+            // When
+            val result = repository.deleteAllForQueue(queueId)
+
+            // Then
+            assertTrue(result)
+            assertEquals(0, repository.findFilmsByQueueId(queueId).size)
+            assertEquals(1, repository.findFilmsByQueueId(otherQueueId).size)
+        }
+
+    @Test
+    fun `deleteAllForQueue should return true when queue has no films`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            createTestQueue(queueId)
+
+            // When
+            val result = repository.deleteAllForQueue(queueId)
+
+            // Then
+            assertTrue(result)
+        }
+
     private suspend fun createTestQueue(queueId: UUID) {
         // Create a minimal queue entry for testing
         transaction {

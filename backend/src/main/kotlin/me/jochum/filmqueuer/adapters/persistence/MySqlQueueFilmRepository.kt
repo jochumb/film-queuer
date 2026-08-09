@@ -81,6 +81,12 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
             true
         }
 
+    override suspend fun deleteAllForQueue(queueId: UUID): Boolean =
+        newSuspendedTransaction {
+            QueueFilmTable.deleteWhere { QueueFilmTable.queueId eq queueId }
+            true
+        }
+
     private fun ResultRow.toFilm() =
         Film(
             tmdbId = this[FilmTable.tmdbId],
