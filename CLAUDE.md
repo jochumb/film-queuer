@@ -200,8 +200,11 @@ DATABASE_PASSWORD=password
 - **Format code**: `./gradlew :backend:format`
 
 ### Frontend
-- No build step or test command — static HTML/CSS/JS served directly. Serve locally with e.g.
-  `cd frontend && python3 -m http.server 3000`, or via Docker (see below).
+- No build step — plain static HTML/CSS/JS, no bundler.
+- **Run dev server (live-reload)**: `cd frontend && npm run dev` (browser-sync, port 3000)
+- **Run tests**: `cd frontend && npm test`
+- **Test with coverage**: `cd frontend && npm run test:ci`
+- **Watch mode**: `cd frontend && npm run test:watch`
 
 ### Docker
 - **Run with Docker**: `docker-compose up --build`
@@ -219,9 +222,17 @@ DATABASE_PASSWORD=password
 - **Architecture**: Hexagonal architecture with dependency injection
 
 ### Frontend Testing
-- No automated test suite currently exists for the frontend (no build/test tooling — plain
-  static HTML/CSS/JS served directly by nginx). Verify frontend changes manually in a browser.
-- **Manual QA**: Drag-and-drop functionality, visual queue indicators, add/remove/watched flows
+- **Test Framework**: Jest with JSDOM for DOM simulation
+- **Coverage**: 71 tests across 4 suites, covering everything except `app.js` (the imperative
+  routing/orchestration layer, deliberately left to manual QA rather than unit tests)
+  - **render.test.js**: Pure HTML-template and formatting helpers (roleLabel, yearOf,
+    runtimeLabel, and every `render*` function)
+  - **api.test.js**: Fetch contract (URL, method, headers, body) for every endpoint
+  - **notifications.test.js**: Toast lifecycle and modal confirm/cancel/escape behavior
+  - **dragdrop.test.js**: `enableDragReorder` — draggable wiring, dragover reordering, drop order
+- **CI Integration**: Tests run automatically during the Docker build (`frontend/Dockerfile`
+  test stage) — a failing test fails the build
+- **Manual QA**: `app.js` orchestration, visual queue indicators, add/remove/watched flows
 
 ## Development Notes
 

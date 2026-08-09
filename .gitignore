@@ -47,11 +47,12 @@ Desktop.ini
 .env.local
 .env.*.local
 
-# Node.js (for potential frontend tooling)
+# Node.js (frontend tooling)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+coverage/
 
 # Temporary files
 *.tmp
