@@ -166,7 +166,7 @@ describe('avatarHtml', () => {
 });
 
 describe('renderQueuePreviews', () => {
-    test('renders an empty state when there are no queues', () => {
+    test('renders an empty state when there are no queues and no random picks', () => {
         const html = renderQueuePreviews([]);
         expect(html).toContain('empty-state');
         expect(html).toContain('No queues yet');
@@ -197,6 +197,8 @@ describe('renderQueuePreviews', () => {
         expect(filmCells[0].querySelector('.mft-meta').textContent).toContain('1999');
         expect(filmCells[0].querySelector('.mft-meta').textContent).toContain('2h 19m');
         expect(filmCells[1].classList.contains('mft-cell-primary')).toBe(false);
+        // A real queue's poster does have a mark-watched overlay button, scoped to that queue.
+        expect(filmCells[0].querySelector('.mft-watched-btn').dataset.watchedQueue).toBe('q1');
     });
 
     test('renders a placeholder when a queue has no films yet', () => {
@@ -205,6 +207,68 @@ describe('renderQueuePreviews', () => {
         ];
         const html = renderQueuePreviews(previews);
         expect(html).toContain('No films added yet');
+    });
+
+    test('renders random picks as a "queue 0" row above the real queues, with a shuffle button and no watched overlay', () => {
+        const previews = [
+            { queue: { id: 'q1', type: 'NAMED', name: 'Weekend Watchlist' }, totalFilms: 1, films: [] },
+        ];
+        const randomPicks = [
+            {
+                id: 'ref-1',
+                title: 'Se7en',
+                filmTmdbId: 807,
+                film: { tmdbId: 807, title: 'Se7en', releaseDate: '1995-09-22', runtime: 127, posterPath: '/se7en.jpg' },
+            },
+        ];
+
+        const dom = parse(renderQueuePreviews(previews, randomPicks));
+        const rows = dom.querySelectorAll('.queue-overview-table > tbody > tr');
+        expect(rows).toHaveLength(2);
+
+        const picksRow = rows[0];
+        expect(picksRow.classList.contains('random-picks-row')).toBe(true);
+        expect(picksRow.hasAttribute('data-nav-queue')).toBe(false);
+        expect(picksRow.querySelector('.queue-card-title').textContent).toBe("Tonight's Picks");
+        expect(picksRow.querySelector('.qo-count .badge').textContent).toBe('1');
+        expect(picksRow.querySelector('.mft-title').textContent).toBe('Se7en');
+        expect(picksRow.querySelector('.mft-watched-btn')).toBeNull();
+        expect(picksRow.querySelector('[data-shuffle-picks]')).not.toBeNull();
+
+        expect(rows[1].getAttribute('data-nav-queue')).toBe('q1');
+    });
+
+    test('skips unmatched random picks rather than rendering an empty tile for them', () => {
+        const randomPicks = [
+            { id: 'ref-1', title: 'Unmatched Film', filmTmdbId: null, film: null },
+            {
+                id: 'ref-2',
+                title: 'Se7en',
+                filmTmdbId: 807,
+                film: { tmdbId: 807, title: 'Se7en', releaseDate: '1995-09-22', runtime: 127, posterPath: null },
+            },
+        ];
+        const dom = parse(renderQueuePreviews([], randomPicks));
+        const tiles = dom.querySelectorAll('.random-picks-row .mft-cell');
+        expect(tiles).toHaveLength(1);
+        expect(tiles[0].querySelector('.mft-title').textContent).toBe('Se7en');
+    });
+
+    test('still renders the table (not the empty state) when there are random picks but no real queues', () => {
+        const randomPicks = [
+            { id: 'ref-1', title: 'Se7en', filmTmdbId: 807, film: { tmdbId: 807, title: 'Se7en', posterPath: null } },
+        ];
+        const html = renderQueuePreviews([], randomPicks);
+        expect(html).not.toContain('empty-state');
+        expect(html).toContain('random-picks-row');
+    });
+
+    test('renders no random-picks row at all when randomPicks is omitted', () => {
+        const previews = [
+            { queue: { id: 'q1', type: 'NAMED', name: 'Weekend Watchlist' }, totalFilms: 0, films: [] },
+        ];
+        const dom = parse(renderQueuePreviews(previews));
+        expect(dom.querySelector('.random-picks-row')).toBeNull();
     });
 });
 

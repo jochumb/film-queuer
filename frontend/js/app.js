@@ -74,6 +74,8 @@ function handleRoute() {
 window.addEventListener('popstate', handleRoute);
 
 /* ===== Home ===== */
+let homeQueuePreviews = [];
+
 function showHome() {
     app.innerHTML = renderTopbar('home') + renderHomeShell();
     loadHomePreviews();
@@ -81,13 +83,40 @@ function showHome() {
 
 async function loadHomePreviews() {
     const container = document.getElementById('queuePreviews');
+    let previewsFailed = false;
     try {
         const data = await api.getQueuePreviews(10, 3);
-        container.innerHTML = renderQueuePreviews(data.previews || []);
-        refreshIcons();
+        homeQueuePreviews = data.previews || [];
     } catch (error) {
         console.error('Error loading queue previews:', error);
+        previewsFailed = true;
+    }
+
+    if (previewsFailed) {
         container.innerHTML = '<div class="error-state">Unable to load queues. <span class="link-action" data-nav="manage">Go to Manage</span></div>';
+        return;
+    }
+
+    let picks = [];
+    try {
+        picks = await api.getRandomPicks();
+    } catch (error) {
+        console.error('Error loading random picks:', error);
+    }
+
+    container.innerHTML = renderQueuePreviews(homeQueuePreviews, picks);
+    refreshIcons();
+}
+
+async function handleShufflePicks() {
+    const container = document.getElementById('queuePreviews');
+    try {
+        const picks = await api.getRandomPicks();
+        container.innerHTML = renderQueuePreviews(homeQueuePreviews, picks);
+        refreshIcons();
+    } catch (error) {
+        console.error('Error shuffling picks:', error);
+        notifications.error('Failed to shuffle picks. Please try again.');
     }
 }
 
@@ -808,6 +837,12 @@ document.addEventListener('click', (e) => {
     const watchedBtn = e.target.closest('[data-watched-film]');
     if (watchedBtn) {
         handleMarkWatched(watchedBtn.dataset.watchedQueue, Number(watchedBtn.dataset.watchedFilm), watchedBtn.dataset.watchedTitle);
+        return;
+    }
+
+    const shuffleBtn = e.target.closest('[data-shuffle-picks]');
+    if (shuffleBtn) {
+        handleShufflePicks();
         return;
     }
 

@@ -84,8 +84,9 @@ export function renderHomeShell() {
     `;
 }
 
-export function renderQueuePreviews(previews) {
-    if (previews.length === 0) {
+export function renderQueuePreviews(previews, randomPicks) {
+    const picks = (randomPicks || []).filter((item) => item.film);
+    if (previews.length === 0 && picks.length === 0) {
         return `<div class="empty-state">No queues yet. <span class="link-action" data-nav="manage">Create your first queue</span></div>`;
     }
     return `
@@ -99,7 +100,40 @@ export function renderQueuePreviews(previews) {
                 </tr>
             </thead>
             <tbody>
+                ${randomPicks ? randomPicksRow(picks) : ''}
                 ${previews.map((preview, index) => queueOverviewRow(preview, index)).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function miniFilmCell(f, index, watchedQueueId) {
+    return `
+        <td class="mft-cell ${index === 0 ? 'mft-cell-primary' : ''}">
+            <div class="mft-film">
+                <div class="mft-thumb">
+                    ${f.posterPath ? `<img src="${f.posterPath}" alt="${esc(f.title)}">` : '<span class="placeholder">🎬</span>'}
+                    ${watchedQueueId ? `
+                        <button class="mft-watched-btn" title="Mark as watched"
+                            data-watched-queue="${watchedQueueId}" data-watched-film="${f.tmdbId}" data-watched-title="${esc(f.title)}">
+                            <i data-feather="check"></i>
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="mft-info">
+                    <span class="mft-title">${esc(f.title)}</span>
+                    <span class="mft-meta">${yearOf(f.releaseDate)} &middot; ${runtimeLabel(f.runtime)}</span>
+                </div>
+            </div>
+        </td>
+    `;
+}
+
+function miniFilmTable(films, watchedQueueId) {
+    return `
+        <table class="mini-film-table">
+            <tbody>
+                <tr>${films.map((f, i) => miniFilmCell(f, i, watchedQueueId)).join('')}</tr>
             </tbody>
         </table>
     `;
@@ -122,31 +156,33 @@ function queueOverviewRow(preview, index) {
             </td>
             <td class="qo-count"><span class="badge">${preview.totalFilms}</span></td>
             <td class="qo-preview">
-                ${films.length > 0 ? `
-                    <table class="mini-film-table">
-                        <tbody>
-                            <tr>
-                                ${films.map((f, i) => `
-                                    <td class="mft-cell ${i === 0 ? 'mft-cell-primary' : ''}">
-                                        <div class="mft-film">
-                                            <div class="mft-thumb">
-                                                ${f.posterPath ? `<img src="${f.posterPath}" alt="${esc(f.title)}">` : '<span class="placeholder">🎬</span>'}
-                                                <button class="mft-watched-btn" title="Mark as watched"
-                                                    data-watched-queue="${q.id}" data-watched-film="${f.tmdbId}" data-watched-title="${esc(f.title)}">
-                                                    <i data-feather="check"></i>
-                                                </button>
-                                            </div>
-                                            <div class="mft-info">
-                                                <span class="mft-title">${esc(f.title)}</span>
-                                                <span class="mft-meta">${yearOf(f.releaseDate)} &middot; ${runtimeLabel(f.runtime)}</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                `).join('')}
-                            </tr>
-                        </tbody>
-                    </table>
-                ` : '<span class="queue-card-meta">No films added yet</span>'}
+                ${films.length > 0 ? miniFilmTable(films, q.id) : '<span class="queue-card-meta">No films added yet</span>'}
+            </td>
+        </tr>
+    `;
+}
+
+function randomPicksRow(picks) {
+    const films = picks.map((item) => item.film);
+    return `
+        <tr class="random-picks-row">
+            <td class="qo-rank">
+                <button class="qo-shuffle-btn" type="button" data-shuffle-picks title="Shuffle picks">
+                    <i data-feather="shuffle"></i>
+                </button>
+            </td>
+            <td class="qo-queue">
+                <div class="qo-queue-cell">
+                    <div class="avatar">🎲</div>
+                    <div>
+                        <p class="queue-card-title">Tonight's Picks</p>
+                        <span class="queue-card-meta">Random from your collection</span>
+                    </div>
+                </div>
+            </td>
+            <td class="qo-count"><span class="badge">${films.length}</span></td>
+            <td class="qo-preview">
+                ${films.length > 0 ? miniFilmTable(films, null) : '<span class="queue-card-meta">No matches — try shuffling</span>'}
             </td>
         </tr>
     `;

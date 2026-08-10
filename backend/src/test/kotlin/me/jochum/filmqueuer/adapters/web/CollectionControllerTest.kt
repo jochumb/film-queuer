@@ -387,4 +387,55 @@ class CollectionControllerTest {
 
             assertEquals(HttpStatusCode.NotFound, response.status)
         }
+
+    @Test
+    fun `GET collection random-picks should default to owned, unwatched, 100-minute cap, count 3`() =
+        testApplication {
+            val ref = ExternalFilmRef(id = UUID.randomUUID(), source = "LETTERBOXD", title = "Short Film", year = 1999, filmTmdbId = 550)
+            coEvery { externalFilmRefRepository.findRandomPicks(true, false, 100, 3) } returns listOf(ref)
+            coEvery { filmRepository.findByTmdbId(550) } returns Film(tmdbId = 550, title = "Short Film", runtime = 90)
+
+            application {
+                configureSerialization()
+                routing { configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository) }
+            }
+
+            val response = client.get("/collection/random-picks")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.bodyAsText().contains("Short Film"))
+            coVerify { externalFilmRefRepository.findRandomPicks(true, false, 100, 3) }
+        }
+
+    @Test
+    fun `GET collection random-picks should forward custom filters`() =
+        testApplication {
+            coEvery { externalFilmRefRepository.findRandomPicks(false, true, 60, 5) } returns emptyList()
+
+            application {
+                configureSerialization()
+                routing { configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository) }
+            }
+
+            val response = client.get("/collection/random-picks?owned=false&watched=true&maxRuntime=60&count=5")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            coVerify { externalFilmRefRepository.findRandomPicks(false, true, 60, 5) }
+        }
+
+    @Test
+    fun `GET collection random-picks should clamp count to a sane range`() =
+        testApplication {
+            coEvery { externalFilmRefRepository.findRandomPicks(true, false, 100, 20) } returns emptyList()
+
+            application {
+                configureSerialization()
+                routing { configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository) }
+            }
+
+            val response = client.get("/collection/random-picks?count=500")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            coVerify { externalFilmRefRepository.findRandomPicks(true, false, 100, 20) }
+        }
 }

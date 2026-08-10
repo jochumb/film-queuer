@@ -142,6 +142,27 @@ fun Route.configureCollectionRoutes(
             }
         }
 
+        get("/random-picks") {
+            try {
+                val ownedParam = call.request.queryParameters["owned"]?.toBooleanStrictOrNull() ?: true
+                val watchedParam = call.request.queryParameters["watched"]?.toBooleanStrictOrNull() ?: false
+                val maxRuntimeParam = call.request.queryParameters["maxRuntime"]?.toIntOrNull() ?: 100
+                val count = (call.request.queryParameters["count"]?.toIntOrNull() ?: 3).coerceIn(1, 20)
+
+                val picks = externalFilmRefRepository.findRandomPicks(ownedParam, watchedParam, maxRuntimeParam, count)
+                val filmsByTmdbId =
+                    picks.mapNotNull { it.filmTmdbId }
+                        .toSet()
+                        .mapNotNull { tmdbId -> filmRepository.findByTmdbId(tmdbId)?.let { tmdbId to it } }
+                        .toMap()
+                val directorsByTmdbId = resolveDirectors(filmsByTmdbId.values, personRepository)
+
+                call.respond(picks.map { it.toDto(filmsByTmdbId, directorsByTmdbId) })
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to fetch random picks: ${e.message}")
+            }
+        }
+
         put("/{id}/removed") {
             try {
                 val idString = call.parameters["id"]

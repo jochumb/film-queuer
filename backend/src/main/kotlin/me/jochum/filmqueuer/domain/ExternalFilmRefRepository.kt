@@ -39,4 +39,16 @@ interface ExternalFilmRefRepository {
         id: UUID,
         removed: Boolean,
     ): Boolean
+
+    /**
+     * Picks `count` random matched, non-removed refs from the full set matching the given
+     * filters (e.g. owned + not watched + a max runtime), for a "what should I watch" homepage
+     * widget. Always excludes unmatched rows, since there'd be no film data to show.
+     */
+    suspend fun findRandomPicks(
+        owned: Boolean?,
+        watched: Boolean?,
+        maxRuntime: Int?,
+        count: Int,
+    ): List<ExternalFilmRef>
 }

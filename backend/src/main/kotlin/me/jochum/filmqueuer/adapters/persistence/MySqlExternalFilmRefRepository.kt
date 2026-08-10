@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.coalesce
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
@@ -152,6 +153,28 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
         }
         return condition
     }
+
+    // Picking N truly random rows means fetching every eligible row and shuffling in memory,
+    // rather than a SQL-level LIMIT (which, without ORDER BY RAND(), would deterministically
+    // return the same N rows every time). The eligible set here (e.g. owned + unwatched + a
+    // runtime cap) is a narrow slice of the collection, so this is cheap in practice.
+    override suspend fun findRandomPicks(
+        owned: Boolean?,
+        watched: Boolean?,
+        maxRuntime: Int?,
+        count: Int,
+    ): List<ExternalFilmRef> =
+        newSuspendedTransaction {
+            val joined = ExternalFilmRefTable.leftJoin(FilmTable, { filmTmdbId }, { tmdbId })
+            var condition = filterCondition(owned, watched, unmatched = false, removed = false)
+            if (maxRuntime != null) {
+                condition = condition and FilmTable.runtime.isNotNull() and (FilmTable.runtime lessEq maxRuntime)
+            }
+            joined.selectAll().where { condition }
+                .map { it.toExternalFilmRef() }
+                .shuffled()
+                .take(count)
+        }
 
     override suspend fun findByFilmTmdbId(tmdbId: Int): ExternalFilmRef? =
         newSuspendedTransaction {

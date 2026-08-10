@@ -451,4 +451,53 @@ class MySqlExternalFilmRefRepositoryTest {
 
             assertEquals(ref, found)
         }
+
+    @Test
+    fun `findRandomPicks should only return owned, unwatched, matched refs under the runtime cap`() =
+        runBlocking {
+            val filmRepository = MySqlFilmRepository()
+            filmRepository.save(Film(tmdbId = 1, title = "Short Owned Unwatched", runtime = 90))
+            filmRepository.save(Film(tmdbId = 2, title = "Too Long", runtime = 150))
+            filmRepository.save(Film(tmdbId = 3, title = "No Runtime Data", runtime = null))
+
+            repository.save(testRef(title = "Short Owned Unwatched", filmTmdbId = 1, owned = true, watched = false))
+            repository.save(testRef(title = "Too Long", year = 2000, filmTmdbId = 2, owned = true, watched = false))
+            repository.save(testRef(title = "No Runtime Data", year = 2001, filmTmdbId = 3, owned = true, watched = false))
+            repository.save(testRef(title = "Owned But Watched", year = 2002, owned = true, watched = true))
+            repository.save(testRef(title = "Not Owned", year = 2003, owned = false, watched = false))
+            repository.save(testRef(title = "Unmatched", year = 2004, owned = true, watched = false, filmTmdbId = null))
+            val removedRef = testRef(title = "Removed", year = 2005, owned = true, watched = false)
+            repository.save(removedRef)
+            repository.setRemoved(removedRef.id, true)
+
+            val picks = repository.findRandomPicks(owned = true, watched = false, maxRuntime = 100, count = 10)
+
+            assertEquals(listOf("Short Owned Unwatched"), picks.map { it.title })
+        }
+
+    @Test
+    fun `findRandomPicks should cap the result at count even when more are eligible`() =
+        runBlocking {
+            val filmRepository = MySqlFilmRepository()
+            repeat(5) { i ->
+                filmRepository.save(Film(tmdbId = 100 + i, title = "Film $i", runtime = 90))
+                repository.save(testRef(title = "Film $i", year = 2000 + i, filmTmdbId = 100 + i))
+            }
+
+            val picks = repository.findRandomPicks(owned = true, watched = false, maxRuntime = 100, count = 2)
+
+            assertEquals(2, picks.size)
+        }
+
+    @Test
+    fun `findRandomPicks should ignore the runtime cap when null`() =
+        runBlocking {
+            val filmRepository = MySqlFilmRepository()
+            filmRepository.save(Film(tmdbId = 1, title = "Long Film", runtime = 200))
+            repository.save(testRef(title = "Long Film", filmTmdbId = 1))
+
+            val picks = repository.findRandomPicks(owned = true, watched = false, maxRuntime = null, count = 10)
+
+            assertEquals(listOf("Long Film"), picks.map { it.title })
+        }
 }

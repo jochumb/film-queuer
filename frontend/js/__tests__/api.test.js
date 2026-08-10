@@ -54,6 +54,16 @@ describe('read endpoints', () => {
         expect(fetch).toHaveBeenCalledWith(`${API_BASE}/queues/previews?limit=10&filmsLimit=0`);
     });
 
+    test('getRandomPicks hits the endpoint with no params by default', async () => {
+        await api.getRandomPicks();
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/random-picks?`);
+    });
+
+    test('getRandomPicks forwards explicit filters', async () => {
+        await api.getRandomPicks({ count: 5, owned: false, watched: true, maxRuntime: 60 });
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/random-picks?count=5&owned=false&watched=true&maxRuntime=60`);
+    });
+
     test('searchMovies and searchTv hit distinct endpoints', async () => {
         await api.searchMovies('fight club');
         expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/search?q=fight%20club`);

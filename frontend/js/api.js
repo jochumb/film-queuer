@@ -71,6 +71,16 @@ export const api = {
         return response.json();
     },
 
+    async getRandomPicks({ count, owned, watched, maxRuntime } = {}) {
+        const params = new URLSearchParams();
+        if (count !== undefined) params.set('count', count);
+        if (owned !== undefined) params.set('owned', owned);
+        if (watched !== undefined) params.set('watched', watched);
+        if (maxRuntime !== undefined) params.set('maxRuntime', maxRuntime);
+        const response = await fetch(`${API_BASE}/collection/random-picks?${params.toString()}`);
+        return response.json();
+    },
+
     async createNamedQueue(name, description = null) {
         return fetch(`${API_BASE}/queues/named`, {
             method: 'POST',

@@ -302,6 +302,20 @@ input[type="range"]::-webkit-slider-thumb {
 .qo-queue-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
 .qo-queue-cell .queue-card-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+.random-picks-row { cursor: default; }
+.random-picks-row:hover { background: transparent; }
+.qo-shuffle-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0.3rem;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+}
+.qo-shuffle-btn:hover { color: var(--accent); background: var(--surface-3); }
+.qo-shuffle-btn svg { width: 16px; height: 16px; }
+
 .mini-film-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .mft-cell { width: 27%; padding: 0.15rem 0.5rem 0.15rem 0; vertical-align: middle; }
 .mft-cell-primary { width: 46%; }
