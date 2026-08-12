@@ -24,6 +24,8 @@ data class FilmResponseDto(
     val posterPath: String? = null,
     val directors: List<DirectorDto> = emptyList(),
     val sortTitle: String? = null,
+    val owned: Boolean = false,
+    val watched: Boolean = false,
 )
 
 @Serializable

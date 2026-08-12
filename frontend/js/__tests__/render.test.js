@@ -10,6 +10,7 @@ const {
     queueDisplayName,
     queueSubLabel,
     avatarHtml,
+    ownershipBadges,
     renderQueuePreviews,
     renderPersonResults,
     renderRankList,
@@ -165,6 +166,25 @@ describe('avatarHtml', () => {
     });
 });
 
+describe('ownershipBadges', () => {
+    test('renders nothing when neither owned nor watched', () => {
+        expect(ownershipBadges({ owned: false, watched: false })).toBe('');
+        expect(ownershipBadges({})).toBe('');
+    });
+
+    test('renders an owned badge only', () => {
+        const dom = parse(ownershipBadges({ owned: true, watched: false }));
+        expect(dom.querySelector('.flag-owned').textContent).toBe('Owned');
+        expect(dom.querySelector('.flag-watched')).toBeNull();
+    });
+
+    test('renders both badges when owned and watched', () => {
+        const dom = parse(ownershipBadges({ owned: true, watched: true }));
+        expect(dom.querySelector('.flag-owned').textContent).toBe('Owned');
+        expect(dom.querySelector('.flag-watched').textContent).toBe('Watched');
+    });
+});
+
 describe('renderQueuePreviews', () => {
     test('renders an empty state when there are no queues and no random picks', () => {
         const html = renderQueuePreviews([]);
@@ -178,7 +198,7 @@ describe('renderQueuePreviews', () => {
                 queue: { id: 'q1', type: 'NAMED', name: 'Weekend Watchlist', description: null },
                 totalFilms: 2,
                 films: [
-                    { tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, posterPath: null },
+                    { tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, posterPath: null, owned: true },
                     { tmdbId: 238, title: 'The Godfather', releaseDate: '1972-03-14', runtime: 175, posterPath: null },
                 ],
             },
@@ -199,6 +219,8 @@ describe('renderQueuePreviews', () => {
         expect(filmCells[1].classList.contains('mft-cell-primary')).toBe(false);
         // A real queue's poster does have a mark-watched overlay button, scoped to that queue.
         expect(filmCells[0].querySelector('.mft-watched-btn').dataset.watchedQueue).toBe('q1');
+        expect(filmCells[0].querySelector('.flag-owned')).not.toBeNull();
+        expect(filmCells[1].querySelector('.flag-owned')).toBeNull();
     });
 
     test('renders a placeholder when a queue has no films yet', () => {
@@ -334,6 +356,15 @@ describe('renderQueueFilms', () => {
         expect(row.querySelector('.qf-sub').textContent).toBe('1999 · 139m');
         expect(row.querySelector('.remove-film-btn').dataset.id).toBe('550');
     });
+
+    test('renders owned/watched badges when set on the film', () => {
+        const films = [
+            { tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, owned: true, watched: true },
+        ];
+        const dom = parse(renderQueueFilms(films));
+        expect(dom.querySelector('.flag-owned')).not.toBeNull();
+        expect(dom.querySelector('.flag-watched')).not.toBeNull();
+    });
 });
 
 describe('renderFilmGrid', () => {
@@ -362,6 +393,13 @@ describe('renderFilmGrid', () => {
         expect(btn.hasAttribute('disabled')).toBe(false);
         expect(btn.textContent.trim()).toBe('Add to queue');
         expect(dom.querySelector('.rating-chip')).toBeNull();
+    });
+
+    test('renders an owned badge for a film marked owned', () => {
+        const films = [{ id: 552, title: 'Se7en', releaseDate: '1995-09-22', voteAverage: 0, owned: true }];
+        const dom = parse(renderFilmGrid(films, new Set()));
+        expect(dom.querySelector('.flag-owned')).not.toBeNull();
+        expect(dom.querySelector('.flag-watched')).toBeNull();
     });
 });
 

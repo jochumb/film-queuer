@@ -15,6 +15,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import me.jochum.filmqueuer.domain.Department
+import me.jochum.filmqueuer.domain.ExternalFilmRef
+import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.Film
 import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.Person
@@ -35,12 +37,15 @@ class QueueControllerTest {
     private lateinit var queueRepository: QueueRepository
     private lateinit var personRepository: PersonRepository
     private lateinit var queueFilmService: QueueFilmService
+    private lateinit var externalFilmRefRepository: ExternalFilmRefRepository
 
     @BeforeEach
     fun setup() {
         queueRepository = mockk()
         personRepository = mockk()
         queueFilmService = mockk()
+        externalFilmRefRepository = mockk()
+        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyList()
     }
 
     @Test
@@ -70,7 +75,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -109,7 +114,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -136,7 +141,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -174,7 +179,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -203,7 +208,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -229,7 +234,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -256,7 +261,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -285,7 +290,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -306,7 +311,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -332,7 +337,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -358,7 +363,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -380,7 +385,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -402,7 +407,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -436,7 +441,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -466,7 +471,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -498,7 +503,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -517,6 +522,53 @@ class QueueControllerTest {
         }
 
     @Test
+    fun `GET queue films should mark films as owned or watched from the collection`() =
+        testApplication {
+            // Given
+            val queueId = UUID.randomUUID()
+            val films =
+                listOf(
+                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), null, null, null),
+                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6), null, null, null),
+                )
+
+            coEvery { queueFilmService.getQueueFilms(queueId) } returns films
+            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550, 13)) } returns
+                listOf(
+                    ExternalFilmRef(
+                        id = UUID.randomUUID(),
+                        source = "LETTERBOXD",
+                        title = "Fight Club",
+                        year = 1999,
+                        filmTmdbId = 550,
+                        owned = true,
+                        watched = false,
+                        createdAt = Instant.now(),
+                    ),
+                )
+
+            application {
+                configureSerialization()
+                routing {
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
+                }
+            }
+
+            // When
+            val response = client.get("/queues/$queueId/films")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            val fightClubJson = responseBody.substringAfter("\"tmdbId\":550").substringBefore("}")
+            assertTrue(fightClubJson.contains("\"owned\":true"))
+            assertTrue(fightClubJson.contains("\"watched\":false"))
+            val forrestGumpJson = responseBody.substringAfter("\"tmdbId\":13").substringBefore("}")
+            assertTrue(forrestGumpJson.contains("\"owned\":false"))
+            assertTrue(forrestGumpJson.contains("\"watched\":false"))
+        }
+
+    @Test
     fun `GET queue films should return empty list when no films in queue`() =
         testApplication {
             // Given
@@ -526,7 +578,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -547,7 +599,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -569,7 +621,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -597,7 +649,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -623,7 +675,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -643,7 +695,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -664,7 +716,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -693,7 +745,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -723,7 +775,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -745,7 +797,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -772,7 +824,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -808,7 +860,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -837,7 +889,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -867,7 +919,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -893,7 +945,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -927,7 +979,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -951,7 +1003,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -979,7 +1031,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1009,7 +1061,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1034,7 +1086,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1069,7 +1121,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1114,7 +1166,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1140,7 +1192,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1162,7 +1214,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1189,7 +1241,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 
@@ -1223,7 +1275,7 @@ class QueueControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+                    configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
                 }
             }
 

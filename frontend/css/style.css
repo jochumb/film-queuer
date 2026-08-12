@@ -581,6 +581,19 @@ input[type="range"]::-webkit-slider-thumb {
 .film-tile-sub { font-size: 0.64rem; color: var(--text-faint); }
 .film-tile-role { font-size: 0.64rem; color: var(--accent); }
 
+.flags-inline { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.flag-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.08rem 0.32rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.flag-owned { background: rgba(245, 196, 81, 0.15); color: var(--accent); }
+.flag-watched { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+
 .add-tile-btn {
     margin-top: auto;
     border: none;
@@ -675,6 +688,8 @@ input[type="range"]::-webkit-slider-thumb {
     flex-wrap: wrap;
 }
 .collection-controls-bottom { justify-content: flex-end; border-bottom: none; border-top: 1px solid var(--border); }
+
+.collection-search input { font-size: 0.78rem; padding: 0.32rem 0.6rem; width: 180px; }
 
 .collection-filters { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
 .filter-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-dim); cursor: pointer; }

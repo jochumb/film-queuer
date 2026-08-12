@@ -11,13 +11,26 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.Department
+import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.PersonRepository
 import me.jochum.filmqueuer.domain.PersonSelectionService
+
+private suspend fun enrichWithOwnership(
+    films: List<FilmDto>,
+    externalFilmRefRepository: ExternalFilmRefRepository,
+): List<FilmDto> {
+    val refsByTmdbId = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.id }).associateBy { it.filmTmdbId }
+    return films.map { film ->
+        val ref = refsByTmdbId[film.id]
+        film.copy(owned = ref?.owned ?: false, watched = ref?.watched ?: false)
+    }
+}
 
 fun Route.configurePersonRoutes(
     tmdbService: TmdbService,
     personSelectionService: PersonSelectionService,
     personRepository: PersonRepository,
+    externalFilmRefRepository: ExternalFilmRefRepository,
 ) {
     route("/persons") {
         get("/search") {
@@ -177,7 +190,7 @@ fun Route.configurePersonRoutes(
 
                 call.respond(
                     FilmographyDto(
-                        films = films.sortedByDescending { it.releaseDate },
+                        films = enrichWithOwnership(films, externalFilmRefRepository).sortedByDescending { it.releaseDate },
                         availableDepartments = availableDepartments.map { it.name }.sorted(),
                     ),
                 )

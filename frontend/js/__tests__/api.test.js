@@ -89,6 +89,16 @@ describe('read endpoints', () => {
         await api.getCollection({ removed: true });
         expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection?offset=0&limit=40&removed=true`);
     });
+
+    test('getCollection forwards a title search query', async () => {
+        await api.getCollection({ q: 'days' });
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection?offset=0&limit=40&q=days`);
+    });
+
+    test('getCollection omits a blank title search query', async () => {
+        await api.getCollection({ q: '' });
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection?offset=0&limit=40`);
+    });
 });
 
 describe('write endpoints', () => {

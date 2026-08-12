@@ -10,12 +10,24 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
+import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
 import me.jochum.filmqueuer.domain.QueueFilmService
 import me.jochum.filmqueuer.domain.QueueRepository
 import java.util.UUID
+
+private suspend fun enrichWithOwnership(
+    films: List<FilmResponseDto>,
+    externalFilmRefRepository: ExternalFilmRefRepository,
+): List<FilmResponseDto> {
+    val refsByTmdbId = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.tmdbId }).associateBy { it.filmTmdbId }
+    return films.map { film ->
+        val ref = refsByTmdbId[film.tmdbId]
+        film.copy(owned = ref?.owned ?: false, watched = ref?.watched ?: false)
+    }
+}
 
 private suspend fun mapQueueToDto(
     queue: me.jochum.filmqueuer.domain.Queue,
@@ -70,6 +82,7 @@ fun Route.configureQueueRoutes(
     queueRepository: QueueRepository,
     personRepository: PersonRepository,
     queueFilmService: QueueFilmService,
+    externalFilmRefRepository: ExternalFilmRefRepository,
 ) {
     route("/queues") {
         get {
@@ -172,17 +185,20 @@ fun Route.configureQueueRoutes(
                 val response =
                     QueueFilmsDto(
                         films =
-                            films.map { film ->
-                                FilmResponseDto(
-                                    tmdbId = film.tmdbId,
-                                    title = film.title,
-                                    originalTitle = film.originalTitle,
-                                    releaseDate = film.releaseDate.toDateString(),
-                                    runtime = film.runtime,
-                                    genres = film.genres,
-                                    posterPath = film.posterPath,
-                                )
-                            },
+                            enrichWithOwnership(
+                                films.map { film ->
+                                    FilmResponseDto(
+                                        tmdbId = film.tmdbId,
+                                        title = film.title,
+                                        originalTitle = film.originalTitle,
+                                        releaseDate = film.releaseDate.toDateString(),
+                                        runtime = film.runtime,
+                                        genres = film.genres,
+                                        posterPath = film.posterPath,
+                                    )
+                                },
+                                externalFilmRefRepository,
+                            ),
                     )
 
                 call.respond(response)
@@ -282,17 +298,20 @@ fun Route.configureQueueRoutes(
                         val queueDto = mapQueueToDto(queue, personRepository, totalFilms)
 
                         val filmsDto =
-                            films.map { film ->
-                                FilmResponseDto(
-                                    tmdbId = film.tmdbId,
-                                    title = film.title,
-                                    originalTitle = film.originalTitle,
-                                    releaseDate = film.releaseDate.toDateString(),
-                                    runtime = film.runtime,
-                                    genres = film.genres,
-                                    posterPath = film.posterPath,
-                                )
-                            }
+                            enrichWithOwnership(
+                                films.map { film ->
+                                    FilmResponseDto(
+                                        tmdbId = film.tmdbId,
+                                        title = film.title,
+                                        originalTitle = film.originalTitle,
+                                        releaseDate = film.releaseDate.toDateString(),
+                                        runtime = film.runtime,
+                                        genres = film.genres,
+                                        posterPath = film.posterPath,
+                                    )
+                                },
+                                externalFilmRefRepository,
+                            )
 
                         QueuePreviewDto(
                             queue = queueDto,

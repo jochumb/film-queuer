@@ -37,9 +37,9 @@ fun Application.configureRouting() {
         }
 
         route("/api") {
-            configureFilmRoutes(tmdbService, filmRepository)
-            configurePersonRoutes(tmdbService, personSelectionService, personRepository)
-            configureQueueRoutes(queueRepository, personRepository, queueFilmService)
+            configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
+            configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
+            configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
             configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository)
         }
     }

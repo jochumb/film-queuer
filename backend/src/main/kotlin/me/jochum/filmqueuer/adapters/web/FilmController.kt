@@ -9,11 +9,24 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
+import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.FilmRepository
+
+private suspend fun enrichWithOwnership(
+    films: List<FilmDto>,
+    externalFilmRefRepository: ExternalFilmRefRepository,
+): List<FilmDto> {
+    val refsByTmdbId = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.id }).associateBy { it.filmTmdbId }
+    return films.map { film ->
+        val ref = refsByTmdbId[film.id]
+        film.copy(owned = ref?.owned ?: false, watched = ref?.watched ?: false)
+    }
+}
 
 fun Route.configureFilmRoutes(
     tmdbService: TmdbService,
     filmRepository: FilmRepository,
+    externalFilmRefRepository: ExternalFilmRefRepository,
 ) {
     route("/films") {
         get("/search") {
@@ -33,21 +46,24 @@ fun Route.configureFilmRoutes(
                         totalPages = tmdbResponse.totalPages,
                         totalResults = tmdbResponse.totalResults,
                         results =
-                            tmdbResponse.results.map { movie ->
-                                FilmDto(
-                                    id = movie.id,
-                                    title = movie.title,
-                                    originalTitle = movie.originalTitle,
-                                    releaseDate = movie.releaseDate,
-                                    posterPath = movie.posterPath?.let { "https://image.tmdb.org/t/p/w300$it" },
-                                    voteAverage = movie.voteAverage,
-                                    voteCount = movie.voteCount,
-                                    overview = movie.overview,
-                                    mediaType = null,
-                                    role = null,
-                                    tv = false,
-                                )
-                            },
+                            enrichWithOwnership(
+                                tmdbResponse.results.map { movie ->
+                                    FilmDto(
+                                        id = movie.id,
+                                        title = movie.title,
+                                        originalTitle = movie.originalTitle,
+                                        releaseDate = movie.releaseDate,
+                                        posterPath = movie.posterPath?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                        voteAverage = movie.voteAverage,
+                                        voteCount = movie.voteCount,
+                                        overview = movie.overview,
+                                        mediaType = null,
+                                        role = null,
+                                        tv = false,
+                                    )
+                                },
+                                externalFilmRefRepository,
+                            ),
                     )
 
                 call.respond(filmSearchResponse)
@@ -73,21 +89,24 @@ fun Route.configureFilmRoutes(
                         totalPages = tmdbResponse.totalPages,
                         totalResults = tmdbResponse.totalResults,
                         results =
-                            tmdbResponse.results.map { tvShow ->
-                                FilmDto(
-                                    id = tvShow.id,
-                                    title = tvShow.name,
-                                    originalTitle = tvShow.originalName,
-                                    releaseDate = tvShow.firstAirDate,
-                                    posterPath = tvShow.posterPath?.let { "https://image.tmdb.org/t/p/w300$it" },
-                                    voteAverage = tvShow.voteAverage,
-                                    voteCount = tvShow.voteCount,
-                                    overview = tvShow.overview,
-                                    mediaType = null,
-                                    role = null,
-                                    tv = true,
-                                )
-                            },
+                            enrichWithOwnership(
+                                tmdbResponse.results.map { tvShow ->
+                                    FilmDto(
+                                        id = tvShow.id,
+                                        title = tvShow.name,
+                                        originalTitle = tvShow.originalName,
+                                        releaseDate = tvShow.firstAirDate,
+                                        posterPath = tvShow.posterPath?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                        voteAverage = tvShow.voteAverage,
+                                        voteCount = tvShow.voteCount,
+                                        overview = tvShow.overview,
+                                        mediaType = null,
+                                        role = null,
+                                        tv = true,
+                                    )
+                                },
+                                externalFilmRefRepository,
+                            ),
                     )
 
                 call.respond(tvSearchResponse)

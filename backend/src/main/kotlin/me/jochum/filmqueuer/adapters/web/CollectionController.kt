@@ -20,18 +20,23 @@ import me.jochum.filmqueuer.domain.LetterboxdImportService
 import me.jochum.filmqueuer.domain.PersonRepository
 import java.util.UUID
 
-private fun Film.toResponseDto(directorsByTmdbId: Map<Int, DirectorDto>) =
-    FilmResponseDto(
-        tmdbId = tmdbId,
-        title = title,
-        originalTitle = originalTitle,
-        releaseDate = releaseDate.toDateString(),
-        runtime = runtime,
-        genres = genres,
-        posterPath = posterPath,
-        directors = directorTmdbIds.mapNotNull { directorsByTmdbId[it] },
-        sortTitle = sortTitle ?: title,
-    )
+private fun Film.toResponseDto(
+    directorsByTmdbId: Map<Int, DirectorDto>,
+    owned: Boolean = false,
+    watched: Boolean = false,
+) = FilmResponseDto(
+    tmdbId = tmdbId,
+    title = title,
+    originalTitle = originalTitle,
+    releaseDate = releaseDate.toDateString(),
+    runtime = runtime,
+    genres = genres,
+    posterPath = posterPath,
+    directors = directorTmdbIds.mapNotNull { directorsByTmdbId[it] },
+    sortTitle = sortTitle ?: title,
+    owned = owned,
+    watched = watched,
+)
 
 private fun ExternalFilmRef.toDto(
     filmsByTmdbId: Map<Int, Film>,
@@ -45,7 +50,7 @@ private fun ExternalFilmRef.toDto(
     owned = owned,
     watched = watched,
     removed = removed,
-    film = filmTmdbId?.let { filmsByTmdbId[it]?.toResponseDto(directorsByTmdbId) },
+    film = filmTmdbId?.let { filmsByTmdbId[it]?.toResponseDto(directorsByTmdbId, owned, watched) },
 )
 
 private fun ImportSummary.toDto() =
@@ -109,6 +114,7 @@ fun Route.configureCollectionRoutes(
                 val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 40).coerceIn(1, 200)
                 val sortField = CollectionSortField.fromParam(call.request.queryParameters["sort"])
                 val sortDescending = call.request.queryParameters["order"] == "desc"
+                val queryParam = call.request.queryParameters["q"]?.takeIf { it.isNotBlank() }
 
                 val page =
                     externalFilmRefRepository.findPage(
@@ -120,8 +126,9 @@ fun Route.configureCollectionRoutes(
                         offset,
                         limit,
                         removedParam,
+                        queryParam,
                     )
-                val total = externalFilmRefRepository.count(ownedParam, watchedParam, unmatchedParam, removedParam)
+                val total = externalFilmRefRepository.count(ownedParam, watchedParam, unmatchedParam, removedParam, queryParam)
                 val filmsByTmdbId =
                     page.mapNotNull { it.filmTmdbId }
                         .toSet()

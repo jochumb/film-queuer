@@ -383,6 +383,60 @@ class MySqlExternalFilmRefRepositoryTest {
         }
 
     @Test
+    fun `findPage and count should filter by a title search matching either the imported or matched film title`() =
+        runBlocking {
+            val filmRepository = MySqlFilmRepository()
+            // Simulates a mismatch: imported as "Days" but auto-matched to the wrong "365 Days" -
+            // a search for "days" should still find it via the imported title, and a search for
+            // the (wrong) matched title should also find it, since either can be what the user
+            // remembers.
+            filmRepository.save(Film(tmdbId = 1, title = "365 Days"))
+            filmRepository.save(Film(tmdbId = 2, title = "Fight Club"))
+            repository.save(testRef(title = "Days", filmTmdbId = 1))
+            repository.save(testRef(title = "Fight Club", year = 1999, filmTmdbId = 2))
+
+            val byImportedTitle =
+                repository.findPage(
+                    owned = null,
+                    watched = null,
+                    unmatched = null,
+                    sortField = CollectionSortField.TITLE,
+                    sortDescending = false,
+                    offset = 0,
+                    limit = 40,
+                    query = "days",
+                )
+            assertEquals(listOf("Days"), byImportedTitle.map { it.title })
+            assertEquals(1, repository.count(owned = null, watched = null, unmatched = null, query = "days"))
+
+            val byMatchedFilmTitle =
+                repository.findPage(
+                    owned = null,
+                    watched = null,
+                    unmatched = null,
+                    sortField = CollectionSortField.TITLE,
+                    sortDescending = false,
+                    offset = 0,
+                    limit = 40,
+                    query = "365",
+                )
+            assertEquals(listOf("Days"), byMatchedFilmTitle.map { it.title })
+
+            val noMatch =
+                repository.findPage(
+                    owned = null,
+                    watched = null,
+                    unmatched = null,
+                    sortField = CollectionSortField.TITLE,
+                    sortDescending = false,
+                    offset = 0,
+                    limit = 40,
+                    query = "nonexistent title",
+                )
+            assertEquals(emptyList(), noMatch)
+        }
+
+    @Test
     fun `findPage and count should exclude removed items by default and include them when asked`() =
         runBlocking {
             repository.save(testRef(title = "Visible Film"))
@@ -450,6 +504,35 @@ class MySqlExternalFilmRefRepositoryTest {
             val found = repository.findByFilmTmdbId(550)
 
             assertEquals(ref, found)
+        }
+
+    @Test
+    fun `findByFilmTmdbIds should batch-return refs for the given tmdb ids, excluding removed and unrequested ones`() =
+        runBlocking {
+            val filmRepository = MySqlFilmRepository()
+            filmRepository.save(Film(tmdbId = 550, title = "Fight Club"))
+            filmRepository.save(Film(tmdbId = 551, title = "Se7en"))
+            filmRepository.save(Film(tmdbId = 552, title = "Other Film"))
+            filmRepository.save(Film(tmdbId = 553, title = "Hidden Film"))
+
+            val fightClub = testRef(title = "Fight Club", filmTmdbId = 550)
+            val se7en = testRef(title = "Se7en", year = 1995, filmTmdbId = 551)
+            val other = testRef(title = "Other Film", year = 2000, filmTmdbId = 552)
+            val hidden = testRef(title = "Hidden Film", year = 2001, filmTmdbId = 553, removed = true)
+            repository.save(fightClub)
+            repository.save(se7en)
+            repository.save(other)
+            repository.save(hidden)
+
+            val found = repository.findByFilmTmdbIds(listOf(550, 551, 553))
+
+            assertEquals(setOf(fightClub, se7en), found.toSet())
+        }
+
+    @Test
+    fun `findByFilmTmdbIds should return an empty list for an empty input`() =
+        runBlocking {
+            assertEquals(emptyList(), repository.findByFilmTmdbIds(emptyList()))
         }
 
     @Test

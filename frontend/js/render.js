@@ -29,6 +29,16 @@ export function esc(str) {
         .replace(/'/g, '&#39;');
 }
 
+export function ownershipBadges(film) {
+    if (!film.owned && !film.watched) return '';
+    return `
+        <span class="flags-inline">
+            ${film.owned ? '<span class="flag-badge flag-owned">Owned</span>' : ''}
+            ${film.watched ? '<span class="flag-badge flag-watched">Watched</span>' : ''}
+        </span>
+    `;
+}
+
 export function queueDisplayName(queue) {
     if (queue.type === 'PERSON') return queue.person?.name || 'Unknown Person';
     if (queue.type === 'NAMED') return queue.name || 'Unnamed Queue';
@@ -123,6 +133,7 @@ function miniFilmCell(f, index, watchedQueueId) {
                 <div class="mft-info">
                     <span class="mft-title">${esc(f.title)}</span>
                     <span class="mft-meta">${yearOf(f.releaseDate)} &middot; ${runtimeLabel(f.runtime)}</span>
+                    ${ownershipBadges(f)}
                 </div>
             </div>
         </td>
@@ -338,6 +349,7 @@ export function renderQueueFilms(films) {
             <div class="qf-info">
                 <p class="qf-title">${esc(f.title)}</p>
                 <span class="qf-sub">${yearOf(f.releaseDate)}${f.runtime ? ` &middot; ${f.runtime}m` : ''}</span>
+                ${ownershipBadges(f)}
             </div>
             <button class="btn btn-icon remove-film-btn" data-id="${f.tmdbId}" data-title="${esc(f.title)}" title="Remove">
                 <i data-feather="trash-2"></i>
@@ -363,6 +375,7 @@ export function renderFilmGrid(films, queuedFilmIds, options = {}) {
                     <p class="film-tile-title">${esc(film.title)}</p>
                     <span class="film-tile-sub">${yearOf(film.releaseDate)}</span>
                     ${film.role ? `<span class="film-tile-role">as ${esc(film.role)}</span>` : ''}
+                    ${ownershipBadges(film)}
                     <button class="add-tile-btn" data-add-film="${film.id}" data-title="${esc(film.title)}" data-tv="${film.tv ? '1' : '0'}" ${isQueued ? 'disabled' : ''}>
                         ${isQueued ? 'In queue' : 'Add to queue'}
                     </button>
@@ -382,6 +395,9 @@ export function renderCollectionShell() {
             </div>
             <div class="panel collection-panel">
                 <div class="collection-controls">
+                    <div class="collection-search">
+                        <input type="text" id="collectionSearchInput" placeholder="Search title..." autocomplete="off">
+                    </div>
                     <div class="collection-filters">
                         <label class="filter-toggle">
                             <input type="checkbox" id="ownedToggle" checked>

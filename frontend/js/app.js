@@ -41,7 +41,9 @@ const collectionState = {
     sortDescending: false,
     offset: 0,
     limit: 40,
+    query: '',
 };
+let collectionSearchDebounce = null;
 let linkModalItem = null;
 let linkSearchMode = 'movie';
 let queuePickerFilm = null;
@@ -557,10 +559,20 @@ function showCollection() {
         sortField: 'director',
         sortDescending: false,
         offset: 0,
+        query: '',
     });
 
     app.innerHTML = renderTopbar('collection') + renderCollectionShell();
 
+    document.getElementById('collectionSearchInput').addEventListener('input', (e) => {
+        const value = e.target.value;
+        clearTimeout(collectionSearchDebounce);
+        collectionSearchDebounce = setTimeout(() => {
+            collectionState.query = value.trim();
+            collectionState.offset = 0;
+            loadCollectionPage();
+        }, 300);
+    });
     document.getElementById('ownedToggle').addEventListener('change', (e) => {
         collectionState.owned = e.target.checked;
         collectionState.offset = 0;
@@ -656,6 +668,7 @@ async function loadCollectionPage() {
         if (collectionState.watched) filters.watched = true;
         if (collectionState.unmatchedOnly) filters.unmatched = true;
         if (collectionState.showRemoved) filters.removed = true;
+        if (collectionState.query) filters.q = collectionState.query;
 
         const data = await api.getCollection(filters);
         body.innerHTML = renderCollectionRows(data.items || []);

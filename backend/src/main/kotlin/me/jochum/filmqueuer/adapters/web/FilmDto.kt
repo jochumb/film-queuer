@@ -15,6 +15,8 @@ data class FilmDto(
     val mediaType: String? = null,
     val role: String? = null,
     val tv: Boolean = false,
+    val owned: Boolean = false,
+    val watched: Boolean = false,
 )
 
 @Serializable

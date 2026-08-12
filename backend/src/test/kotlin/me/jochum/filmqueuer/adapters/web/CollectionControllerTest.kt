@@ -242,6 +242,45 @@ class CollectionControllerTest {
         }
 
     @Test
+    fun `GET collection should forward the q query param as a title search`() =
+        testApplication {
+            val match = ExternalFilmRef(id = UUID.randomUUID(), source = "LETTERBOXD", title = "Days", year = 2020)
+            coEvery {
+                externalFilmRefRepository.findPage(null, null, null, CollectionSortField.TITLE, false, 0, 40, false, "days")
+            } returns listOf(match)
+            coEvery { externalFilmRefRepository.count(null, null, null, false, "days") } returns 1
+
+            application {
+                configureSerialization()
+                routing { configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository) }
+            }
+
+            val response = client.get("/collection?q=days")
+
+            assertTrue(response.bodyAsText().contains("Days"))
+            coVerify { externalFilmRefRepository.findPage(null, null, null, CollectionSortField.TITLE, false, 0, 40, false, "days") }
+        }
+
+    @Test
+    fun `GET collection should treat a blank q param as no search`() =
+        testApplication {
+            coEvery {
+                externalFilmRefRepository.findPage(null, null, null, CollectionSortField.TITLE, false, 0, 40, false, null)
+            } returns emptyList()
+            coEvery { externalFilmRefRepository.count(null, null, null, false, null) } returns 0
+
+            application {
+                configureSerialization()
+                routing { configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository) }
+            }
+
+            val response = client.get("/collection?q=   ")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            coVerify { externalFilmRefRepository.findPage(null, null, null, CollectionSortField.TITLE, false, 0, 40, false, null) }
+        }
+
+    @Test
     fun `PUT collection id link should update and return the ref`() =
         testApplication {
             val id = UUID.randomUUID()
@@ -391,7 +430,16 @@ class CollectionControllerTest {
     @Test
     fun `GET collection random-picks should default to owned, unwatched, 100-minute cap, count 3`() =
         testApplication {
-            val ref = ExternalFilmRef(id = UUID.randomUUID(), source = "LETTERBOXD", title = "Short Film", year = 1999, filmTmdbId = 550)
+            val ref =
+                ExternalFilmRef(
+                    id = UUID.randomUUID(),
+                    source = "LETTERBOXD",
+                    title = "Short Film",
+                    year = 1999,
+                    filmTmdbId = 550,
+                    owned = true,
+                    watched = false,
+                )
             coEvery { externalFilmRefRepository.findRandomPicks(true, false, 100, 3) } returns listOf(ref)
             coEvery { filmRepository.findByTmdbId(550) } returns Film(tmdbId = 550, title = "Short Film", runtime = 90)
 
@@ -403,7 +451,12 @@ class CollectionControllerTest {
             val response = client.get("/collection/random-picks")
 
             assertEquals(HttpStatusCode.OK, response.status)
-            assertTrue(response.bodyAsText().contains("Short Film"))
+            val responseBody = response.bodyAsText()
+            assertTrue(responseBody.contains("Short Film"))
+            // The nested film object must carry the ref's own owned/watched flags, not the
+            // FilmResponseDto defaults - otherwise "Tonight's Picks" never shows its badges.
+            assertTrue(responseBody.contains("\"owned\":true"))
+            assertTrue(responseBody.contains("\"watched\":false"))
             coVerify { externalFilmRefRepository.findRandomPicks(true, false, 100, 3) }
         }
 

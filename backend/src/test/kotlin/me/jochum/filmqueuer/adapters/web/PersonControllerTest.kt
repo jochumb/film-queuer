@@ -12,11 +12,15 @@ import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import me.jochum.filmqueuer.adapters.tmdb.TmdbCastCredit
 import me.jochum.filmqueuer.adapters.tmdb.TmdbKnownFor
 import me.jochum.filmqueuer.adapters.tmdb.TmdbPerson
+import me.jochum.filmqueuer.adapters.tmdb.TmdbPersonCreditsResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbPersonSearchResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.Department
+import me.jochum.filmqueuer.domain.ExternalFilmRef
+import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.Person
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
@@ -24,6 +28,7 @@ import me.jochum.filmqueuer.domain.PersonSelectionResult
 import me.jochum.filmqueuer.domain.PersonSelectionService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -32,12 +37,15 @@ class PersonControllerTest {
     private lateinit var tmdbService: TmdbService
     private lateinit var personSelectionService: PersonSelectionService
     private lateinit var personRepository: PersonRepository
+    private lateinit var externalFilmRefRepository: ExternalFilmRefRepository
 
     @BeforeEach
     fun setup() {
         tmdbService = mockk()
         personSelectionService = mockk()
         personRepository = mockk()
+        externalFilmRefRepository = mockk()
+        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyList()
     }
 
     @Test
@@ -77,7 +85,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
                 }
             }
 
@@ -97,7 +105,7 @@ class PersonControllerTest {
         testApplication {
             application {
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
                 }
             }
 
@@ -140,7 +148,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
                 }
             }
 
@@ -191,7 +199,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
                 }
             }
 
@@ -215,7 +223,7 @@ class PersonControllerTest {
 
             application {
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
                 }
             }
 
@@ -228,6 +236,54 @@ class PersonControllerTest {
         }
 
     @Test
+    fun `GET persons filmography should mark films as owned or watched from the collection`() =
+        testApplication {
+            // Given
+            val credits =
+                TmdbPersonCreditsResponse(
+                    cast =
+                        listOf(
+                            TmdbCastCredit(id = 550, title = "Fight Club", character = "Narrator"),
+                            TmdbCastCredit(id = 13, title = "Forrest Gump", character = "Forrest"),
+                        ),
+                )
+            coEvery { tmdbService.getPersonMovieCredits(123) } returns credits
+            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550, 13)) } returns
+                listOf(
+                    ExternalFilmRef(
+                        id = UUID.randomUUID(),
+                        source = "LETTERBOXD",
+                        title = "Fight Club",
+                        year = 1999,
+                        filmTmdbId = 550,
+                        owned = true,
+                        watched = false,
+                        createdAt = Instant.now(),
+                    ),
+                )
+
+            application {
+                configureSerialization()
+                routing {
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
+                }
+            }
+
+            // When
+            val response = client.get("/persons/123/filmography?department=Acting")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            val fightClubJson = responseBody.substringAfter("\"id\":550").substringBefore("}")
+            assertTrue(fightClubJson.contains("\"owned\":true"))
+            assertTrue(fightClubJson.contains("\"watched\":false"))
+            val forrestGumpJson = responseBody.substringAfter("\"id\":13").substringBefore("}")
+            assertTrue(forrestGumpJson.contains("\"owned\":false"))
+            assertTrue(forrestGumpJson.contains("\"watched\":false"))
+        }
+
+    @Test
     fun `POST persons select should handle repository error`() =
         testApplication {
             // Given
@@ -236,7 +292,7 @@ class PersonControllerTest {
             application {
                 configureSerialization()
                 routing {
-                    configurePersonRoutes(tmdbService, personSelectionService, personRepository)
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
                 }
             }
 

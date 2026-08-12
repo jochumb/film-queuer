@@ -109,7 +109,7 @@ export const api = {
         return response.json();
     },
 
-    async getCollection({ owned, watched, unmatched, removed, sort, order, offset = 0, limit = 40 } = {}) {
+    async getCollection({ owned, watched, unmatched, removed, sort, order, offset = 0, limit = 40, q } = {}) {
         const params = new URLSearchParams({ offset, limit });
         if (owned !== undefined) params.set('owned', owned);
         if (watched !== undefined) params.set('watched', watched);
@@ -117,6 +117,7 @@ export const api = {
         if (removed !== undefined) params.set('removed', removed);
         if (sort !== undefined) params.set('sort', sort);
         if (order !== undefined) params.set('order', order);
+        if (q) params.set('q', q);
         const response = await fetch(`${API_BASE}/collection?${params.toString()}`);
         return response.json();
     },

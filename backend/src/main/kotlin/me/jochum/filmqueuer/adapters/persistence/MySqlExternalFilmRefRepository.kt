@@ -11,9 +11,12 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.leftJoin
+import org.jetbrains.exposed.sql.lowerCase
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
@@ -90,6 +93,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
         offset: Int,
         limit: Int,
         removed: Boolean,
+        query: String?,
     ): List<ExternalFilmRef> =
         newSuspendedTransaction {
             val sortOrder = if (sortDescending) SortOrder.DESC else SortOrder.ASC
@@ -104,24 +108,24 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
                     )
                     .leftJoin(PersonTable, { FilmDirectorTable.personTmdbId }, { PersonTable.tmdbId })
 
-            val query = joined.selectAll().where { filterCondition(owned, watched, unmatched, removed) }
+            val pagedQuery = joined.selectAll().where { filterCondition(owned, watched, unmatched, removed, query) }
             when (sortField) {
                 CollectionSortField.TITLE ->
-                    query.orderBy(coalesce(FilmTable.sortTitle, ExternalFilmRefTable.title) to sortOrder)
-                CollectionSortField.YEAR -> query.orderBy(ExternalFilmRefTable.year to sortOrder)
+                    pagedQuery.orderBy(coalesce(FilmTable.sortTitle, ExternalFilmRefTable.title) to sortOrder)
+                CollectionSortField.YEAR -> pagedQuery.orderBy(ExternalFilmRefTable.year to sortOrder)
                 // Director alone leaves same-director films in an arbitrary order; chaining
                 // year then title as tiebreakers keeps a stable, predictable ordering within
                 // a director's filmography instead of shuffling on every page load.
                 CollectionSortField.DIRECTOR ->
-                    query.orderBy(
+                    pagedQuery.orderBy(
                         PersonTable.sortName to sortOrder,
                         ExternalFilmRefTable.year to sortOrder,
                         coalesce(FilmTable.sortTitle, ExternalFilmRefTable.title) to sortOrder,
                     )
-                CollectionSortField.ADDED -> query.orderBy(ExternalFilmRefTable.createdAt to sortOrder)
+                CollectionSortField.ADDED -> pagedQuery.orderBy(ExternalFilmRefTable.createdAt to sortOrder)
             }
 
-            query.limit(limit, offset.toLong()).map { it.toExternalFilmRef() }
+            pagedQuery.limit(limit, offset.toLong()).map { it.toExternalFilmRef() }
         }
 
     override suspend fun count(
@@ -129,10 +133,17 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
         watched: Boolean?,
         unmatched: Boolean?,
         removed: Boolean,
+        query: String?,
     ): Int =
         newSuspendedTransaction {
-            ExternalFilmRefTable.selectAll()
-                .where { filterCondition(owned, watched, unmatched, removed) }
+            // A title search matches the imported Letterboxd title OR the matched film's title,
+            // since a mismatch/import quirk can leave those two out of sync (see e.g. a row
+            // imported as "Days" auto-matched to the wrong "365 Days" - the row only shows up
+            // under the matched title everywhere else in the UI).
+            ExternalFilmRefTable
+                .leftJoin(FilmTable, { filmTmdbId }, { tmdbId })
+                .selectAll()
+                .where { filterCondition(owned, watched, unmatched, removed, query) }
                 .count()
                 .toInt()
         }
@@ -142,6 +153,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
         watched: Boolean?,
         unmatched: Boolean?,
         removed: Boolean,
+        query: String? = null,
     ): Op<Boolean> {
         var condition: Op<Boolean> = ExternalFilmRefTable.removed eq removed
         if (owned != null) condition = condition and (ExternalFilmRefTable.owned eq owned)
@@ -150,6 +162,12 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
             condition =
                 condition and
                 if (unmatched) ExternalFilmRefTable.filmTmdbId.isNull() else ExternalFilmRefTable.filmTmdbId.isNotNull()
+        }
+        if (!query.isNullOrBlank()) {
+            val pattern = "%${query.trim().lowercase()}%"
+            val importedTitleMatches = ExternalFilmRefTable.title.lowerCase() like pattern
+            val matchedFilmTitleMatches = FilmTable.title.lowerCase() like pattern
+            condition = condition and (importedTitleMatches or matchedFilmTitleMatches)
         }
         return condition
     }
@@ -182,6 +200,17 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
                 .where { ExternalFilmRefTable.filmTmdbId eq tmdbId }
                 .singleOrNull()
                 ?.toExternalFilmRef()
+        }
+
+    override suspend fun findByFilmTmdbIds(tmdbIds: Collection<Int>): List<ExternalFilmRef> =
+        newSuspendedTransaction {
+            if (tmdbIds.isEmpty()) {
+                emptyList()
+            } else {
+                ExternalFilmRefTable.selectAll()
+                    .where { (ExternalFilmRefTable.filmTmdbId inList tmdbIds) and (ExternalFilmRefTable.removed eq false) }
+                    .map { it.toExternalFilmRef() }
+            }
         }
 
     private fun ResultRow.toExternalFilmRef() =

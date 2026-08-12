@@ -20,20 +20,27 @@ import me.jochum.filmqueuer.adapters.tmdb.TmdbMovieSearchResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.adapters.tmdb.TmdbTvSearchResponse
 import me.jochum.filmqueuer.adapters.tmdb.TmdbTvShow
+import me.jochum.filmqueuer.domain.ExternalFilmRef
+import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.FilmRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Instant
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class FilmControllerTest {
     private lateinit var tmdbService: TmdbService
     private lateinit var filmRepository: FilmRepository
+    private lateinit var externalFilmRefRepository: ExternalFilmRefRepository
 
     @BeforeEach
     fun setup() {
         tmdbService = mockk()
         filmRepository = mockk()
+        externalFilmRefRepository = mockk()
+        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyList()
     }
 
     @Test
@@ -48,7 +55,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // Given
@@ -93,7 +100,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             coEvery { tmdbService.searchMovies("Dune", 1984) } returns
@@ -103,6 +110,46 @@ class FilmControllerTest {
 
             assertEquals(HttpStatusCode.OK, response.status)
             coVerify { tmdbService.searchMovies("Dune", 1984) }
+        }
+
+    @Test
+    fun `GET films search should mark a result as owned when it's linked in the collection`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
+            }
+
+            coEvery { tmdbService.searchMovies("Fight Club") } returns
+                TmdbMovieSearchResponse(
+                    page = 1,
+                    totalPages = 1,
+                    totalResults = 1,
+                    results = listOf(TmdbMovie(id = 550, title = "Fight Club")),
+                )
+            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550)) } returns
+                listOf(
+                    ExternalFilmRef(
+                        id = UUID.randomUUID(),
+                        source = "LETTERBOXD",
+                        title = "Fight Club",
+                        year = 1999,
+                        filmTmdbId = 550,
+                        owned = true,
+                        watched = true,
+                        createdAt = Instant.now(),
+                    ),
+                )
+
+            val response = client.get("/films/search?q=Fight Club")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            assertTrue(responseBody.contains("\"owned\":true"))
+            assertTrue(responseBody.contains("\"watched\":true"))
         }
 
     @Test
@@ -117,7 +164,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // Given
@@ -162,7 +209,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             coEvery { tmdbService.searchTv("Chernobyl", 2019) } returns
@@ -183,7 +230,7 @@ class FilmControllerTest {
     fun `GET films search should return bad request when query parameter is missing`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // When
@@ -198,7 +245,7 @@ class FilmControllerTest {
     fun `GET films search tv should return bad request when query parameter is missing`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // When
@@ -213,7 +260,7 @@ class FilmControllerTest {
     fun `GET films search should handle TMDB service errors for movies`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // Given
@@ -231,7 +278,7 @@ class FilmControllerTest {
     fun `GET films search tv should handle TMDB service errors for TV shows`() =
         testApplication {
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // Given
@@ -257,7 +304,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // Given
@@ -295,7 +342,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             // Given
@@ -329,7 +376,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             coEvery { filmRepository.updateSortTitle(550, "Godfather, The") } returns true
@@ -352,7 +399,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             coEvery { filmRepository.updateSortTitle(999, "Anything") } returns false
@@ -374,7 +421,7 @@ class FilmControllerTest {
             }
 
             routing {
-                configureFilmRoutes(tmdbService, filmRepository)
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
             val response =
