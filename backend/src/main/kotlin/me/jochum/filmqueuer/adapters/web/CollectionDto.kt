@@ -1,13 +1,16 @@
 package me.jochum.filmqueuer.adapters.web
 
+import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class ExternalFilmRefDto(
+    @JsonSchema.Format("uuid")
     val id: String,
     val source: String,
     val title: String,
     val year: Int?,
+    @JsonSchema.Description("Null until matched to a TMDB film")
     val filmTmdbId: Int?,
     val owned: Boolean,
     val watched: Boolean,

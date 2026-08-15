@@ -1,5 +1,6 @@
 package me.jochum.filmqueuer.adapters.web
 
+import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -18,6 +19,7 @@ data class FilmResponseDto(
     val tmdbId: Int,
     val title: String,
     val originalTitle: String? = null,
+    @JsonSchema.Format("date")
     val releaseDate: String? = null,
     val runtime: Int? = null,
     val genres: List<String>? = null,

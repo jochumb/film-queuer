@@ -1,15 +1,22 @@
 package me.jochum.filmqueuer.adapters.web
 
+import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class QueueDto(
+    @JsonSchema.Format("uuid")
     val id: String,
     val type: String,
+    @JsonSchema.Format("date-time")
     val createdAt: String,
     val person: SavedPersonDto? = null,
     val name: String? = null,
     val description: String? = null,
+    @JsonSchema.Description(
+        "NAMED queues only - a local /images/queue/... path, not the source URL that was provided " +
+            "(see PUT /queues/{id}/image-path)",
+    )
     val imagePath: String? = null,
     val filmCount: Int = 0,
 )

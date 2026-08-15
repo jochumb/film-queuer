@@ -33,6 +33,10 @@ fun Route.configurePersonRoutes(
     externalFilmRefRepository: ExternalFilmRefRepository,
 ) {
     route("/persons") {
+        /**
+         * Tag: Persons
+         * Description: Search TMDB for actors, directors, and writers. Returns up to 5 results, ranked by TMDB popularity.
+         */
         get("/search") {
             val query = call.request.queryParameters["q"]
             if (query.isNullOrBlank()) {
@@ -65,6 +69,10 @@ fun Route.configurePersonRoutes(
             }
         }
 
+        /**
+         * Tag: Persons
+         * Description: Save a person and create a person-queue for them.
+         */
         post("/select") {
             try {
                 val personDto = call.receive<PersonSelectionDto>()
@@ -95,6 +103,13 @@ fun Route.configurePersonRoutes(
             }
         }
 
+        /**
+         * Tag: Persons
+         * Description: Get a person's filmography for one department. Also returns which departments this
+         *   person actually has credits in, for populating a department switcher.
+         * Path: tmdbId [Int] TMDB person ID
+         * Query: department One of ACTING, DIRECTING, WRITING, OTHER
+         */
         get("/{tmdbId}/filmography") {
             val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
             if (tmdbId == null) {
@@ -199,6 +214,11 @@ fun Route.configurePersonRoutes(
             }
         }
 
+        /**
+         * Tag: Persons
+         * Description: Update a person's department.
+         * Path: tmdbId [Int] TMDB person ID
+         */
         put("/{tmdbId}/department") {
             val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
             if (tmdbId == null) {
@@ -221,6 +241,12 @@ fun Route.configurePersonRoutes(
             }
         }
 
+        /**
+         * Tag: Persons
+         * Description: Override the default "Lastname, Firstname" sort key used to order the Collection
+         *   page by director (fixes cases the naive default gets wrong, e.g. "Guillermo del Toro").
+         * Path: tmdbId [Int] TMDB person ID
+         */
         put("/{tmdbId}/sort-name") {
             val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
             if (tmdbId == null) {

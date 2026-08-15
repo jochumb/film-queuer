@@ -31,6 +31,7 @@ docker-compose up --build
 3. Access the application:
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8080
+   - API docs (Swagger UI, generated live from the routing tree): http://localhost:8080/apidocs
 
 ## Development
 

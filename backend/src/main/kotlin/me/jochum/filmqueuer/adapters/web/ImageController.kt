@@ -9,6 +9,11 @@ import io.ktor.server.routing.get
 import java.io.File
 
 fun Route.configureImageRoutes(storageDir: String) {
+    /**
+     * Tag: Images
+     * Description: Serve a locally-stored queue thumbnail. This is a top-level route (not under /api).
+     *   filename is the file segment of the imagePath returned for a named queue.
+     */
     get("/images/queue/{filename}") {
         val filename = call.parameters["filename"]
         if (filename.isNullOrBlank() || filename.contains("/") || filename.contains("..")) {

@@ -5,8 +5,8 @@ val logback_version: String by project
 plugins {
     application
     kotlin("jvm")
-    id("io.ktor.plugin") version "3.2.3"
-    kotlin("plugin.serialization") version "2.2.10"
+    id("io.ktor.plugin") version "3.5.2"
+    kotlin("plugin.serialization") version "2.4.10"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
 }
 
@@ -17,6 +17,17 @@ application {
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
+// Generates OpenAPI metadata from the routing DSL at compile time (see Routing.kt's swaggerUI()
+// call, which serves it). codeInferenceEnabled picks up request/response schemas from
+// call.receive<T>()/call.respond<T>() without needing to hand-annotate every route.
+ktor {
+    openApi {
+        enabled = true
+        codeInferenceEnabled = true
+        onlyCommented = false
+    }
+}
+
 dependencies {
     implementation("io.ktor:ktor-server-core-jvm")
     implementation("io.ktor:ktor-server-host-common-jvm")
@@ -25,6 +36,8 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation-jvm")
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
     implementation("io.ktor:ktor-server-netty-jvm")
+    implementation("io.ktor:ktor-server-swagger")
+    implementation("io.ktor:ktor-server-openapi")
     implementation("io.ktor:ktor-client-core-jvm")
     implementation("io.ktor:ktor-client-cio-jvm")
     implementation("io.ktor:ktor-client-content-negotiation-jvm")

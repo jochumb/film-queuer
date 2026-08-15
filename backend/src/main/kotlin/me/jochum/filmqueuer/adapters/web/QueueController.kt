@@ -89,6 +89,10 @@ fun Route.configureQueueRoutes(
     queueImageService: QueueImageService,
 ) {
     route("/queues") {
+        /**
+         * Tag: Queues
+         * Description: List all queues, ordered by sort_order. Includes person data for PERSON queues.
+         */
         get {
             try {
                 val queues = queueRepository.findAll()
@@ -103,6 +107,10 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Get a specific queue.
+         */
         get("/{queueId}") {
             try {
                 val queueIdString = call.parameters["queueId"]
@@ -129,6 +137,11 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Delete a queue. Also clears its films and, for a named queue, deletes its
+         *   locally-stored thumbnail file so nothing orphans on disk.
+         */
         delete("/{queueId}") {
             try {
                 val queueIdString = call.parameters["queueId"]
@@ -156,6 +169,10 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Add a film or TV show to a queue.
+         */
         post("/{queueId}/films") {
             try {
                 val queueIdString = call.parameters["queueId"]
@@ -176,6 +193,10 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Get a queue's films, ordered by sort_order.
+         */
         get("/{queueId}/films") {
             try {
                 val queueIdString = call.parameters["queueId"]
@@ -214,6 +235,11 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Remove a film from a queue.
+         * Path: filmTmdbId [Int] TMDB film ID
+         */
         delete("/{queueId}/films/{filmTmdbId}") {
             try {
                 val queueIdString = call.parameters["queueId"]
@@ -243,6 +269,10 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Reorder a queue's films.
+         */
         put("/{queueId}/films/reorder") {
             try {
                 val queueIdString = call.parameters["queueId"]
@@ -268,6 +298,10 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Reorder queues themselves.
+         */
         put("/reorder") {
             try {
                 val reorderRequest = call.receive<ReorderQueuesDto>()
@@ -287,6 +321,12 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Compact queue previews (with a few films each) for the home page. Accepts
+         *   optional limit (max queues, default 9) and filmsLimit (max films per queue, default 3)
+         *   query params.
+         */
         get("/previews") {
             try {
                 val limitParam = call.parameters["limit"]
@@ -331,6 +371,10 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Create a named (non-person) queue.
+         */
         post("/named") {
             try {
                 val createRequest = call.receive<CreateNamedQueueDto>()
@@ -356,6 +400,12 @@ fun Route.configureQueueRoutes(
             }
         }
 
+        /**
+         * Tag: Queues
+         * Description: Set or clear a named queue's thumbnail. imagePath is a source URL to download; the
+         *   backend stores a local copy and persists a local path like /images/queue/<file>.jpg, not the
+         *   original URL. A blank or omitted imagePath clears the thumbnail (and deletes the old file).
+         */
         put("/{queueId}/image-path") {
             try {
                 val queueIdString = call.parameters["queueId"]

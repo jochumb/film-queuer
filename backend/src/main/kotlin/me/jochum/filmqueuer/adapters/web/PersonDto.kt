@@ -1,5 +1,6 @@
 package me.jochum.filmqueuer.adapters.web
 
+import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -36,6 +37,7 @@ data class SavedPersonDto(
 @Serializable
 data class PersonSelectionResponseDto(
     val person: SavedPersonDto,
+    @JsonSchema.Format("uuid")
     val queueId: String,
 )
 

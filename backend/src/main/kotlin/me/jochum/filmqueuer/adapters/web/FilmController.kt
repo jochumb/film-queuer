@@ -29,6 +29,11 @@ fun Route.configureFilmRoutes(
     externalFilmRefRepository: ExternalFilmRefRepository,
 ) {
     route("/films") {
+        /**
+         * Tag: Films
+         * Description: Search TMDB movies by title. Accepts an optional year query param to narrow
+         *   results to a primary release year, disambiguating same-title films.
+         */
         get("/search") {
             val query = call.request.queryParameters["q"]
             if (query.isNullOrBlank()) {
@@ -72,6 +77,11 @@ fun Route.configureFilmRoutes(
             }
         }
 
+        /**
+         * Tag: Films
+         * Description: Search TMDB TV shows by title. Accepts an optional year query param to narrow
+         *   results to a first-air-date year.
+         */
         get("/search/tv") {
             val query = call.request.queryParameters["q"]
             if (query.isNullOrBlank()) {
@@ -115,6 +125,12 @@ fun Route.configureFilmRoutes(
             }
         }
 
+        /**
+         * Tag: Films
+         * Description: Override the default sort key (leading "The"/"A"/"An" stripped) used to order the
+         *   Collection page by title.
+         * Path: tmdbId [Int] TMDB film ID
+         */
         put("/{tmdbId}/sort-title") {
             val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
             if (tmdbId == null) {

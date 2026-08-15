@@ -82,6 +82,13 @@ fun Route.configureCollectionRoutes(
     personRepository: PersonRepository,
 ) {
     route("/collection") {
+        /**
+         * Tag: Collection
+         * Description: Import a Letterboxd "list" (owned) CSV export. Rows are deduplicated by
+         *   source/title/year; re-importing merges the owned flag onto an existing row rather than
+         *   creating a duplicate. Each row is auto-matched against TMDB, narrowed by year.
+         * Body: text/csv [string] Raw CSV file content
+         */
         post("/import/letterboxd/owned") {
             try {
                 val summary = letterboxdImportService.importCollection(call.receiveText())
@@ -93,6 +100,12 @@ fun Route.configureCollectionRoutes(
             }
         }
 
+        /**
+         * Tag: Collection
+         * Description: Import a Letterboxd "watched" CSV export. Same matching/merge behavior as the
+         *   owned import, but sets the watched flag instead.
+         * Body: text/csv [string] Raw CSV file content
+         */
         post("/import/letterboxd/watched") {
             try {
                 val summary = letterboxdImportService.importWatched(call.receiveText())
@@ -104,6 +117,15 @@ fun Route.configureCollectionRoutes(
             }
         }
 
+        /**
+         * Tag: Collection
+         * Description: Paginated, filtered, sorted Collection listing, enriched with matched film and
+         *   director data. Query params: owned, watched (boolean). unmatched (boolean; true = only rows
+         *   with no TMDB match, false = only matched rows). removed (boolean; show soft-deleted rows
+         *   instead of visible ones, default false). sort (one of title/year/director/added, default
+         *   title). order (asc/desc, default asc). offset/limit (default 0/40, limit max 200). q (title
+         *   search, matching either the imported Letterboxd title or the matched film's title).
+         */
         get {
             try {
                 val ownedParam = call.request.queryParameters["owned"]?.toBooleanStrictOrNull()
@@ -149,6 +171,12 @@ fun Route.configureCollectionRoutes(
             }
         }
 
+        /**
+         * Tag: Collection
+         * Description: Pick N random matched films from the Collection. Backs the home page's
+         *   "Tonight's Picks" row. Query params: owned (default true), watched (default false),
+         *   maxRuntime (minutes, omit for no cap, default 100), count (default 3, max 20).
+         */
         get("/random-picks") {
             try {
                 val ownedParam = call.request.queryParameters["owned"]?.toBooleanStrictOrNull() ?: true
@@ -170,6 +198,10 @@ fun Route.configureCollectionRoutes(
             }
         }
 
+        /**
+         * Tag: Collection
+         * Description: Soft-delete or restore a collection row.
+         */
         put("/{id}/removed") {
             try {
                 val idString = call.parameters["id"]
@@ -194,6 +226,11 @@ fun Route.configureCollectionRoutes(
             }
         }
 
+        /**
+         * Tag: Collection
+         * Description: Manually link/relink a collection row to a TMDB film. Used by the "Fix match"
+         *   flow for auto-match misses or mismatches.
+         */
         put("/{id}/link") {
             try {
                 val idString = call.parameters["id"]
