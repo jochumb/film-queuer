@@ -889,6 +889,7 @@ async function addCollectionFilmToQueue(queueId) {
 /* ===== Global delegated events ===== */
 document.addEventListener('click', (e) => {
     if (e.target.closest('.drag-handle')) return;
+    if (e.target.closest('.letterboxd-link')) return;
 
     const watchedBtn = e.target.closest('[data-watched-film]');
     if (watchedBtn) {

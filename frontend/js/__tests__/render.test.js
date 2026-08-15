@@ -251,6 +251,12 @@ describe('renderQueuePreviews', () => {
         expect(filmCells[0].querySelector('.mft-watched-btn').dataset.watchedQueue).toBe('q1');
         expect(filmCells[0].querySelector('.flag-owned')).not.toBeNull();
         expect(filmCells[1].querySelector('.flag-owned')).toBeNull();
+
+        // Film titles link out to the film's Letterboxd page, opened in a new tab.
+        const titleLink = filmCells[0].querySelector('.mft-title');
+        expect(titleLink.tagName).toBe('A');
+        expect(titleLink.getAttribute('href')).toBe('https://letterboxd.com/tmdb/550/');
+        expect(titleLink.getAttribute('target')).toBe('_blank');
     });
 
     test('renders a placeholder when a queue has no films yet', () => {

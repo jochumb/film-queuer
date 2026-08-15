@@ -362,7 +362,10 @@ input[type="range"]::-webkit-slider-thumb {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: inherit;
+    text-decoration: none;
 }
+.mft-title:hover { text-decoration: underline; color: var(--accent); }
 .mft-meta { font-size: 0.62rem; color: var(--text-faint); white-space: nowrap; }
 
 .mft-cell-primary .mft-title { font-size: 0.86rem; }

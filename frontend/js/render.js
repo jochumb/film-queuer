@@ -142,7 +142,7 @@ function miniFilmCell(f, index, watchedQueueId) {
                     ` : ''}
                 </div>
                 <div class="mft-info">
-                    <span class="mft-title">${esc(f.title)}</span>
+                    <a class="mft-title letterboxd-link" href="https://letterboxd.com/tmdb/${f.tmdbId}/" target="_blank" rel="noopener">${esc(f.title)}</a>
                     <span class="mft-meta">${yearOf(f.releaseDate)} &middot; ${runtimeLabel(f.runtime)}</span>
                     ${ownershipBadges(f)}
                 </div>
