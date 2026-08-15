@@ -9,70 +9,15 @@
 This project follows **Ports & Adapters (Hexagonal Architecture)** pattern with the following structure:
 
 ### Backend Structure
-```
-backend/src/main/kotlin/me/jochum/filmqueuer/
-├── Application.kt              # Main application entry point
-├── domain/                     # Core business logic & entities
-│   ├── Person.kt               # Person entity, Department enum, defaultSortName()
-│   ├── PersonRepository.kt     # Person repository interface
-│   ├── PersonSelectionService.kt # Person selection business logic
-│   ├── PersonEnrichmentService.kt # Backfills missing person data from TMDB (ENRICH_PERSONS)
-│   ├── Queue.kt                # Queue entities (PersonQueue, NamedQueue incl. imagePath)
-│   ├── QueueRepository.kt      # Queue repository interface
-│   ├── QueueImageStorage.kt    # Port for downloading/persisting a local copy of a queue thumbnail
-│   ├── QueueImageService.kt    # Orchestrates set/clear of a named queue's thumbnail, incl. cleanup of the old file
-│   ├── Film.kt                 # Film entity (incl. directorTmdbIds, sortTitle, defaultSortTitle())
-│   ├── FilmRepository.kt       # Film repository interface
-│   ├── FilmEnrichmentService.kt # Backfills missing film data from TMDB (ENRICH_FILMS)
-│   ├── QueueFilm.kt            # Queue-Film association entity
-│   ├── QueueFilmRepository.kt  # Queue-Film repository interface
-│   ├── QueueFilmService.kt     # Queue-Film business logic
-│   ├── TmdbFilmFactory.kt      # Shared TMDB→Film mapping (movie/TV, director resolution, TV runtime calc)
-│   ├── ExternalFilmRef.kt      # A Letterboxd-imported title, matched or not, to a Film
-│   ├── ExternalFilmRefRepository.kt # ExternalFilmRef repository interface
-│   ├── CollectionSortField.kt  # TITLE / YEAR / DIRECTOR / ADDED sort options for the Collection page
-│   └── LetterboxdImportService.kt # CSV import, TMDB auto-match, manual link/relink
-├── adapters/
-│   ├── web/                    # HTTP/REST adapters (Ktor-specific)
-│   │   ├── PersonController.kt # Person REST endpoints
-│   │   ├── PersonDto.kt        # Person data transfer objects
-│   │   ├── QueueController.kt  # Queue REST endpoints
-│   │   ├── QueueDto.kt         # Queue data transfer objects
-│   │   ├── QueueFilmDto.kt     # Queue-Film DTOs, FilmResponseDto, DirectorDto, ReorderFilmsDto
-│   │   ├── FilmController.kt   # Film/TV search REST endpoints (+ sort-title update)
-│   │   ├── FilmDto.kt          # Film data transfer objects
-│   │   ├── CollectionController.kt # Collection import/list/link/remove REST endpoints
-│   │   ├── CollectionDto.kt    # Collection data transfer objects
-│   │   ├── ImageController.kt  # Serves locally-stored queue thumbnails from disk (/images/queue/{filename})
-│   │   ├── DateExtensions.kt   # LocalDate ↔ String conversion utilities
-│   │   ├── HTTP.kt             # CORS configuration
-│   │   ├── Serialization.kt    # JSON serialization setup
-│   │   └── Routing.kt          # Route configuration (image routes are top-level; the rest mounted under /api)
-│   ├── persistence/            # Database adapters (MySQL + Exposed ORM)
-│   │   ├── DatabaseConfig.kt   # Database connection & schema setup
-│   │   ├── DatabasePurgeUtility.kt # Development database cleanup
-│   │   ├── PersonEnrichmentUtility.kt # Runs PersonEnrichmentService on startup if enabled
-│   │   ├── FilmEnrichmentUtility.kt # Runs FilmEnrichmentService on startup if enabled
-│   │   ├── PersonTable.kt      # Person database table definition (incl. sort_name)
-│   │   ├── MySqlPersonRepository.kt # Person repository implementation
-│   │   ├── QueueTable.kt       # Queue database table definition
-│   │   ├── MySqlQueueRepository.kt # Queue repository implementation
-│   │   ├── FilmTable.kt        # Film database table definition (incl. sort_title)
-│   │   ├── MySqlFilmRepository.kt # Film repository implementation
-│   │   ├── FilmDirectorTable.kt # Film↔Person director join table (billing_order)
-│   │   ├── ExternalFilmRefTable.kt # Letterboxd import rows (owned/watched/removed flags)
-│   │   ├── MySqlExternalFilmRefRepository.kt # ExternalFilmRef repository implementation
-│   │   ├── QueueFilmTable.kt   # Queue-Film join table definition
-│   │   └── MySqlQueueFilmRepository.kt # Queue-Film repository implementation
-│   ├── letterboxd/
-│   │   └── LetterboxdCsvParser.kt # Parses Letterboxd "list" (owned) and "watched" CSV exports
-│   ├── storage/
-│   │   └── LocalQueueImageStorage.kt # Downloads a URL and writes it to a Docker-volume-mounted directory
-│   └── tmdb/                   # TMDB API integration
-│       ├── TmdbService.kt      # TMDB service interface
-│       ├── TmdbClient.kt       # TMDB HTTP client implementation
-│       └── TmdbModels.kt       # TMDB API response models + originalReleaseDate()/directorCrew()
-```
+Hexagonal layout under `backend/src/main/kotlin/me/jochum/filmqueuer/`:
+- `domain/` — entities, repository interfaces, and business-logic services (`QueueFilmService`, `LetterboxdImportService`, `QueueImageService`, `TmdbFilmFactory`, enrichment services). No framework or DB code lives here.
+- `adapters/web/` — one `*Controller.kt` + `*Dto.kt` pair per resource (persons, films, queues, collection), plus `ImageController` for serving thumbnails. `Routing.kt` wires everything together; the image route is mounted top-level, the rest under `/api`.
+- `adapters/persistence/` — one `*Table.kt` (Exposed schema) + `MySql*Repository.kt` pair per entity, plus `DatabaseConfig`/enrichment/purge utilities.
+- `adapters/tmdb/` — TMDB HTTP client and response models.
+- `adapters/letterboxd/` — Letterboxd CSV export parsing.
+- `adapters/storage/` — local file storage for downloaded queue thumbnails.
+
+This is a map of the territory, not a file index — `ls`/`grep` the directories for the current, authoritative file list rather than trusting a hand-maintained one here.
 
 ### Frontend Structure
 ```
@@ -156,68 +101,28 @@ frontend/
 
 ## Database Schema
 
+Quick reference only — the `*Table.kt` files in `adapters/persistence/` are authoritative:
+
 ```sql
--- Core entities
 persons: tmdb_id (PK), name, department, image_path, sort_name
-films: tmdb_id (PK), title, original_title, release_date (DATE), runtime (INT), genres (VARCHAR),
-       poster_path (VARCHAR), tv (BOOLEAN DEFAULT FALSE), sort_title
-queues: id (UUID, PK), type, person_tmdb_id, name, description, created_at (TIMESTAMP), sort_order (INT),
-        image_path (VARCHAR, named queues only - a locally-served path like /images/queue/<file>.jpg,
-        not the raw URL the user provided; see QueueImageService)
-
--- Association with manual ordering
-queue_films: queue_id (UUID), film_tmdb_id, added_at (TIMESTAMP), sort_order (INT)
-             PRIMARY KEY (queue_id, film_tmdb_id)
-
--- Director join table (co-directed films/shows keep TMDB crew order via billing_order)
-film_directors: film_tmdb_id (FK → films), person_tmdb_id (FK → persons), billing_order (INT DEFAULT 0)
-                PRIMARY KEY (film_tmdb_id, person_tmdb_id)
-
--- Letterboxd collection import rows
-external_film_refs: id (UUID, PK), source (VARCHAR), title (VARCHAR), year (INT NULL),
-                     film_tmdb_id (FK → films, NULL until matched), owned (BOOLEAN), watched (BOOLEAN),
-                     created_at (TIMESTAMP), removed (BOOLEAN DEFAULT FALSE)
-                     UNIQUE (source, title, year)
+films: tmdb_id (PK), title, original_title, release_date, runtime, genres, poster_path,
+       tv (BOOLEAN), sort_title
+queues: id (UUID, PK), type, person_tmdb_id, name, description, image_path (named queues only,
+        a local /images/queue/... path — see QueueImageService), created_at, sort_order
+queue_films: queue_id (UUID), film_tmdb_id, added_at, sort_order — PK (queue_id, film_tmdb_id)
+film_directors: film_tmdb_id (FK), person_tmdb_id (FK), billing_order — PK (film_tmdb_id, person_tmdb_id)
+external_film_refs: id (UUID, PK), source, title, year, film_tmdb_id (FK, nullable until matched),
+                     owned, watched, created_at, removed — UNIQUE (source, title, year)
 ```
 
 ## API Endpoints
 
-All routes below are mounted under `/api` (e.g. `GET /api/persons/search`).
+REST endpoints live in `adapters/web/*Controller.kt` — one controller per resource (persons, films, queues, collection), plus `ImageController` for thumbnails. Grep those files for the current, authoritative route list rather than trusting a hand-maintained copy here.
 
-### Person Management
-- `GET /persons/search?q={query}` - Search TMDB persons
-- `POST /persons/select` - Save person and create queue
-- `GET /persons/{tmdbId}/filmography?department={dept}` - Get filmography with available departments
-- `PUT /persons/{tmdbId}/department` - Update person's department
-- `PUT /persons/{tmdbId}/sort-name` - Set a person's sort name (`{sortName}`)
-
-### Film & TV Search
-- `GET /films/search?q={query}&year={year}` - Search TMDB movies by title, optionally narrowed by year
-- `GET /films/search/tv?q={query}&year={year}` - Search TMDB TV shows by title, optionally narrowed by year
-- `PUT /films/{tmdbId}/sort-title` - Set a film's sort title (`{sortTitle}`)
-
-### Queue Management
-- `GET /queues` - List all queues with person data (ordered by sort_order)
-- `GET /queues/previews` - Get compact queue previews with film counts for home page
-- `GET /queues/{id}` - Get specific queue with person data
-- `GET /queues/{id}/films` - Get queue films (ordered by sort_order)
-- `POST /queues/{id}/films` - Add film/TV show to queue (includes `tv` boolean parameter)
-- `DELETE /queues/{id}/films/{filmId}` - Remove film from queue
-- `PUT /queues/{id}/films/reorder` - Reorder films within queue
-- `PUT /queues/reorder` - Reorder queues themselves
-- `POST /queues/named` - Create a named (non-person) queue
-- `PUT /queues/{id}/image-path` - Set/clear a named queue's thumbnail (`{imagePath}`: a source URL to
-  download and store a local copy of; blank/omitted clears it). 400 if the URL isn't a reachable
-  supported image type
-- `GET /images/queue/{filename}` - Serves a locally-stored queue thumbnail (top-level route, not under `/api`)
-- `DELETE /queues/{id}` - Delete a queue
-
-### Collection Management (Letterboxd import)
-- `POST /collection/import/letterboxd/owned` - Import a Letterboxd "list" (owned) CSV export
-- `POST /collection/import/letterboxd/watched` - Import a Letterboxd "watched" CSV export
-- `GET /collection?owned={bool}&watched={bool}&unmatched={bool}&removed={bool}&sort={title|year|director|added}&order={asc|desc}&offset={n}&limit={n}` - Paginated, filtered, sorted collection listing enriched with matched film + director data
-- `PUT /collection/{id}/link` - Manually link/relink a collection row to a TMDB film (`{tmdbId, tv}`)
-- `PUT /collection/{id}/removed` - Soft-delete/restore a collection row (`{removed}`)
+Non-obvious routing facts worth knowing without reading every controller:
+- Everything is mounted under `/api` **except** `GET /images/queue/{filename}`, which is top-level (see `Routing.kt`).
+- Several PUT endpoints are dedicated single-field updates (sort-name, sort-title, image-path, removed) rather than a general-purpose update — see Key Architectural Decision #7 for why.
+- `GET /collection` is the one endpoint with a wide filter/sort surface (`owned`/`watched`/`unmatched`/`removed`/`sort`/`order`/`offset`/`limit`/`q`); see `CollectionController.kt` for the full param set.
 
 ## Key Architectural Decisions
 
@@ -293,8 +198,8 @@ DATABASE_PASSWORD=password
 
 ### Frontend Testing
 - **Test Framework**: Jest with JSDOM for DOM simulation
-- **Coverage**: 98 tests across 4 suites, covering everything except `app.js` (the imperative
-  routing/orchestration layer, deliberately left to manual QA rather than unit tests)
+- **Coverage**: covers everything except `app.js` (the imperative routing/orchestration layer,
+  deliberately left to manual QA rather than unit tests) — run `npm test` for the current count
   - **render.test.js**: Pure HTML-template and formatting helpers (roleLabel, yearOf, runtimeLabel,
     esc, and every `render*` function, including the Collection page and its modals)
   - **api.test.js**: Fetch contract (URL, method, headers, body) for every endpoint
