@@ -153,4 +153,12 @@ export const api = {
             body: JSON.stringify({ sortTitle }),
         });
     },
+
+    async updateQueueImagePath(queueId, imagePath) {
+        return fetch(`${API_BASE}/queues/${queueId}/image-path`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imagePath }),
+        });
+    },
 };

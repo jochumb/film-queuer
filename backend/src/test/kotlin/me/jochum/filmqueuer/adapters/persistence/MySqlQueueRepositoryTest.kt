@@ -1,6 +1,7 @@
 package me.jochum.filmqueuer.adapters.persistence
 
 import kotlinx.coroutines.runBlocking
+import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.PersonQueue
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -45,6 +46,67 @@ class MySqlQueueRepositoryTest {
             assertNotNull(retrievedQueue)
             assertEquals(queueId, retrievedQueue.id)
             assertEquals(123, (retrievedQueue as PersonQueue).personTmdbId)
+        }
+
+    @Test
+    fun `should save and retrieve NamedQueue with an image path`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            val namedQueue =
+                NamedQueue(
+                    id = queueId,
+                    name = "Weekend Watchlist",
+                    imagePath = "https://example.com/thumb.jpg",
+                )
+
+            // When
+            repository.save(namedQueue)
+            val retrievedQueue = repository.findById(queueId)
+
+            // Then
+            assertEquals("https://example.com/thumb.jpg", (retrievedQueue as NamedQueue).imagePath)
+        }
+
+    @Test
+    fun `updateImagePath should set and clear a named queue's image`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            repository.save(NamedQueue(id = queueId, name = "Weekend Watchlist"))
+
+            // When
+            val setResult = repository.updateImagePath(queueId, "https://example.com/thumb.jpg")
+            val afterSet = repository.findById(queueId) as NamedQueue
+
+            val clearResult = repository.updateImagePath(queueId, null)
+            val afterClear = repository.findById(queueId) as NamedQueue
+
+            // Then
+            assertTrue(setResult)
+            assertEquals("https://example.com/thumb.jpg", afterSet.imagePath)
+            assertTrue(clearResult)
+            assertNull(afterClear.imagePath)
+        }
+
+    @Test
+    fun `updateImagePath should return false for a non-existent queue`() =
+        runBlocking {
+            assertTrue(!repository.updateImagePath(UUID.randomUUID(), "https://example.com/thumb.jpg"))
+        }
+
+    @Test
+    fun `updateImagePath should not affect a PersonQueue`() =
+        runBlocking {
+            // Given
+            val queueId = UUID.randomUUID()
+            repository.save(PersonQueue(id = queueId, personTmdbId = 123))
+
+            // When - a PersonQueue row has type PERSON, not NAMED, so the update should no-op
+            val result = repository.updateImagePath(queueId, "https://example.com/thumb.jpg")
+
+            // Then
+            assertTrue(!result)
         }
 
     @Test

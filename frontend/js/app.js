@@ -21,6 +21,8 @@ import {
     renderQueuePickerModal,
     renderEditSortNameModal,
     renderEditSortTitleModal,
+    renderEditQueueImageModal,
+    avatarHtml,
 } from './render.js';
 
 const app = document.getElementById('app');
@@ -305,6 +307,47 @@ function wireQueueDetailPage() {
     document.getElementById('tvSearch')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performTvSearch();
     });
+    document.querySelector('[data-edit-queue-image]')?.addEventListener('click', openEditQueueImageModal);
+}
+
+function openEditQueueImageModal() {
+    openModal(renderEditQueueImageModal(currentQueue));
+
+    document.getElementById('queueImageModalClose').addEventListener('click', closeModal);
+    document.getElementById('queueImageModalSave').addEventListener('click', saveQueueImage);
+    document.getElementById('queueImageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveQueueImage();
+    });
+}
+
+async function saveQueueImage() {
+    const input = document.getElementById('queueImageInput');
+    const imagePath = input.value.trim();
+    const saveButton = document.getElementById('queueImageModalSave');
+
+    saveButton.disabled = true;
+    saveButton.textContent = imagePath ? 'Downloading...' : 'Saving...';
+    try {
+        const response = await api.updateQueueImagePath(currentQueueId, imagePath);
+        if (response.ok) {
+            // The backend downloads a local copy, so its stored path differs from what was
+            // typed - re-fetch to pick up the real served path.
+            currentQueue = await api.getQueue(currentQueueId);
+            const btn = document.querySelector('[data-edit-queue-image]');
+            if (btn) btn.innerHTML = avatarHtml(currentQueue, 'avatar-lg');
+            closeModal();
+            notifications.success('Thumbnail updated.');
+        } else {
+            const errorText = await response.text();
+            notifications.error(`Failed to update the thumbnail: ${errorText}`);
+        }
+    } catch (error) {
+        console.error('Error updating queue image:', error);
+        notifications.error('Failed to update the thumbnail. Please try again.');
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save';
+    }
 }
 
 async function loadQueueFilms(queueId) {

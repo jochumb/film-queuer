@@ -17,8 +17,10 @@ backend/src/main/kotlin/me/jochum/filmqueuer/
 │   ├── PersonRepository.kt     # Person repository interface
 │   ├── PersonSelectionService.kt # Person selection business logic
 │   ├── PersonEnrichmentService.kt # Backfills missing person data from TMDB (ENRICH_PERSONS)
-│   ├── Queue.kt                # Queue entities (PersonQueue)
+│   ├── Queue.kt                # Queue entities (PersonQueue, NamedQueue incl. imagePath)
 │   ├── QueueRepository.kt      # Queue repository interface
+│   ├── QueueImageStorage.kt    # Port for downloading/persisting a local copy of a queue thumbnail
+│   ├── QueueImageService.kt    # Orchestrates set/clear of a named queue's thumbnail, incl. cleanup of the old file
 │   ├── Film.kt                 # Film entity (incl. directorTmdbIds, sortTitle, defaultSortTitle())
 │   ├── FilmRepository.kt       # Film repository interface
 │   ├── FilmEnrichmentService.kt # Backfills missing film data from TMDB (ENRICH_FILMS)
@@ -41,10 +43,11 @@ backend/src/main/kotlin/me/jochum/filmqueuer/
 │   │   ├── FilmDto.kt          # Film data transfer objects
 │   │   ├── CollectionController.kt # Collection import/list/link/remove REST endpoints
 │   │   ├── CollectionDto.kt    # Collection data transfer objects
+│   │   ├── ImageController.kt  # Serves locally-stored queue thumbnails from disk (/images/queue/{filename})
 │   │   ├── DateExtensions.kt   # LocalDate ↔ String conversion utilities
 │   │   ├── HTTP.kt             # CORS configuration
 │   │   ├── Serialization.kt    # JSON serialization setup
-│   │   └── Routing.kt          # Route configuration (all routes mounted under /api)
+│   │   └── Routing.kt          # Route configuration (image routes are top-level; the rest mounted under /api)
 │   ├── persistence/            # Database adapters (MySQL + Exposed ORM)
 │   │   ├── DatabaseConfig.kt   # Database connection & schema setup
 │   │   ├── DatabasePurgeUtility.kt # Development database cleanup
@@ -63,6 +66,8 @@ backend/src/main/kotlin/me/jochum/filmqueuer/
 │   │   └── MySqlQueueFilmRepository.kt # Queue-Film repository implementation
 │   ├── letterboxd/
 │   │   └── LetterboxdCsvParser.kt # Parses Letterboxd "list" (owned) and "watched" CSV exports
+│   ├── storage/
+│   │   └── LocalQueueImageStorage.kt # Downloads a URL and writes it to a Docker-volume-mounted directory
 │   └── tmdb/                   # TMDB API integration
 │       ├── TmdbService.kt      # TMDB service interface
 │       ├── TmdbClient.kt       # TMDB HTTP client implementation
@@ -156,7 +161,9 @@ frontend/
 persons: tmdb_id (PK), name, department, image_path, sort_name
 films: tmdb_id (PK), title, original_title, release_date (DATE), runtime (INT), genres (VARCHAR),
        poster_path (VARCHAR), tv (BOOLEAN DEFAULT FALSE), sort_title
-queues: id (UUID, PK), type, person_tmdb_id, created_at (TIMESTAMP)
+queues: id (UUID, PK), type, person_tmdb_id, name, description, created_at (TIMESTAMP), sort_order (INT),
+        image_path (VARCHAR, named queues only - a locally-served path like /images/queue/<file>.jpg,
+        not the raw URL the user provided; see QueueImageService)
 
 -- Association with manual ordering
 queue_films: queue_id (UUID), film_tmdb_id, added_at (TIMESTAMP), sort_order (INT)
@@ -199,6 +206,10 @@ All routes below are mounted under `/api` (e.g. `GET /api/persons/search`).
 - `PUT /queues/{id}/films/reorder` - Reorder films within queue
 - `PUT /queues/reorder` - Reorder queues themselves
 - `POST /queues/named` - Create a named (non-person) queue
+- `PUT /queues/{id}/image-path` - Set/clear a named queue's thumbnail (`{imagePath}`: a source URL to
+  download and store a local copy of; blank/omitted clears it). 400 if the URL isn't a reachable
+  supported image type
+- `GET /images/queue/{filename}` - Serves a locally-stored queue thumbnail (top-level route, not under `/api`)
 - `DELETE /queues/{id}` - Delete a queue
 
 ### Collection Management (Letterboxd import)
@@ -218,6 +229,7 @@ All routes below are mounted under `/api` (e.g. `GET /api/persons/search`).
 6. **Consistent Naming**: "MySql" prefix for repository implementations
 7. **Additive vs. Replace Persistence**: `save()` on Film/ExternalFilmRef is insert-if-absent and never clobbers existing richer data (e.g. directors); `update()` is a full replace, used only when explicitly re-resolving/re-matching. Dedicated single-field updates (`updateSortName`, `updateSortTitle`, `setRemoved`) exist specifically so a general-purpose `update()`/re-import never accidentally reverts a manual correction
 8. **Shared TMDB→Film Mapping**: `TmdbFilmFactory` is the one place that maps TMDB movie/TV details onto the domain `Film` shape (including TV runtime calculation and director resolution), used by both `QueueFilmService` and `LetterboxdImportService` so this logic isn't duplicated
+9. **Local Copies of User-Provided Images**: Named queue thumbnails are downloaded and stored on disk (`LocalQueueImageStorage`, behind the `QueueImageStorage` port) rather than just persisting the source URL, so the app doesn't break if that URL later changes or disappears. `QueueImageService` orchestrates the download-then-persist-then-cleanup-old-file sequence so a replaced/cleared image never leaks an orphaned file. The storage directory is a Docker-mounted volume (`queue_images`) so copies survive container rebuilds
 
 ## Technology Stack
 

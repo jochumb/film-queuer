@@ -38,6 +38,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-test-host-jvm:$ktor_version")
     testImplementation("io.ktor:ktor-server-content-negotiation-jvm:$ktor_version")
     testImplementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktor_version")
+    testImplementation("io.ktor:ktor-client-mock-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.1")

@@ -12,4 +12,9 @@ interface QueueRepository {
     suspend fun deleteById(id: UUID): Boolean
 
     suspend fun reorderQueues(queueIds: List<UUID>): Boolean
+
+    suspend fun updateImagePath(
+        id: UUID,
+        imagePath: String?,
+    ): Boolean
 }

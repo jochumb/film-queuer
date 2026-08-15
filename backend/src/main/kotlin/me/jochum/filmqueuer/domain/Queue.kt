@@ -18,5 +18,6 @@ data class NamedQueue(
     override val id: UUID,
     val name: String,
     val description: String? = null,
+    val imagePath: String? = null,
     override val createdAt: Instant = Instant.now(),
 ) : Queue(id, createdAt)

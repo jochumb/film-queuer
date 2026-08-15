@@ -11,10 +11,12 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
+import me.jochum.filmqueuer.domain.InvalidImageUrlException
 import me.jochum.filmqueuer.domain.NamedQueue
 import me.jochum.filmqueuer.domain.PersonQueue
 import me.jochum.filmqueuer.domain.PersonRepository
 import me.jochum.filmqueuer.domain.QueueFilmService
+import me.jochum.filmqueuer.domain.QueueImageService
 import me.jochum.filmqueuer.domain.QueueRepository
 import java.util.UUID
 
@@ -63,6 +65,7 @@ private suspend fun mapQueueToDto(
                 person = null,
                 name = queue.name,
                 description = queue.description,
+                imagePath = queue.imagePath,
                 filmCount = filmCount,
             )
         else ->
@@ -83,6 +86,7 @@ fun Route.configureQueueRoutes(
     personRepository: PersonRepository,
     queueFilmService: QueueFilmService,
     externalFilmRefRepository: ExternalFilmRefRepository,
+    queueImageService: QueueImageService,
 ) {
     route("/queues") {
         get {
@@ -142,6 +146,7 @@ fun Route.configureQueueRoutes(
                 }
 
                 queueFilmService.clearQueue(queueId)
+                queueImageService.deleteImageFile(queue)
                 queueRepository.deleteById(queueId)
                 call.respond(HttpStatusCode.OK, "Queue deleted successfully")
             } catch (e: IllegalArgumentException) {
@@ -348,6 +353,39 @@ fun Route.configureQueueRoutes(
                 call.respond(HttpStatusCode.Created, result)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to create named queue: ${e.message}")
+            }
+        }
+
+        put("/{queueId}/image-path") {
+            try {
+                val queueIdString = call.parameters["queueId"]
+                if (queueIdString == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue ID is required")
+                    return@put
+                }
+
+                val queueId = UUID.fromString(queueIdString)
+                val updateDto = call.receive<UpdateQueueImageDto>()
+                val sourceUrl = updateDto.imagePath?.trim()?.takeIf { it.isNotBlank() }
+
+                val updated =
+                    if (sourceUrl == null) {
+                        queueImageService.clearImage(queueId)
+                    } else {
+                        queueImageService.setImage(queueId, sourceUrl)
+                    }
+
+                if (updated) {
+                    call.respond(HttpStatusCode.OK)
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Named queue not found")
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID: ${e.message}")
+            } catch (e: InvalidImageUrlException) {
+                call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid image URL")
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "Failed to update image: ${e.message}")
             }
         }
     }

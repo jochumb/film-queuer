@@ -29,8 +29,11 @@ services:
       - DATABASE_URL=jdbc:mysql://database:3306/filmqueuer
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - QUEUE_IMAGE_DIR=/app/data/queue-images
     env_file:
       - .env
+    volumes:
+      - queue_images:/app/data/queue-images
     depends_on:
       database:
         condition: service_healthy
@@ -52,3 +55,4 @@ networks:
 
 volumes:
   mysql_data:
+  queue_images:

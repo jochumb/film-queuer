@@ -10,11 +10,13 @@ import me.jochum.filmqueuer.adapters.persistence.MySqlFilmRepository
 import me.jochum.filmqueuer.adapters.persistence.MySqlPersonRepository
 import me.jochum.filmqueuer.adapters.persistence.MySqlQueueFilmRepository
 import me.jochum.filmqueuer.adapters.persistence.MySqlQueueRepository
+import me.jochum.filmqueuer.adapters.storage.LocalQueueImageStorage
 import me.jochum.filmqueuer.adapters.tmdb.TmdbClient
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.LetterboxdImportService
 import me.jochum.filmqueuer.domain.PersonSelectionService
 import me.jochum.filmqueuer.domain.QueueFilmService
+import me.jochum.filmqueuer.domain.QueueImageService
 import me.jochum.filmqueuer.domain.TmdbFilmFactory
 
 fun Application.configureRouting() {
@@ -25,9 +27,11 @@ fun Application.configureRouting() {
     val filmRepository = MySqlFilmRepository()
     val queueFilmRepository = MySqlQueueFilmRepository()
     val externalFilmRefRepository = MySqlExternalFilmRefRepository()
+    val queueImageStorage = LocalQueueImageStorage()
     val filmFactory = TmdbFilmFactory(tmdbService, personRepository)
     val personSelectionService = PersonSelectionService(personRepository, queueRepository)
     val queueFilmService = QueueFilmService(filmRepository, queueFilmRepository, filmFactory)
+    val queueImageService = QueueImageService(queueRepository, queueImageStorage)
     val letterboxdImportService =
         LetterboxdImportService(externalFilmRefRepository, filmRepository, personRepository, tmdbService, filmFactory)
 
@@ -36,10 +40,12 @@ fun Application.configureRouting() {
             call.respondText("Film Queuer API is running!")
         }
 
+        configureImageRoutes(queueImageStorage.storageDir)
+
         route("/api") {
             configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
-            configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository)
+            configureQueueRoutes(queueRepository, personRepository, queueFilmService, externalFilmRefRepository, queueImageService)
             configureCollectionRoutes(letterboxdImportService, externalFilmRefRepository, filmRepository, personRepository)
         }
     }

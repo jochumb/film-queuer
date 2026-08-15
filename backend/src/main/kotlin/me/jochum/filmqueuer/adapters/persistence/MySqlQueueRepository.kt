@@ -6,6 +6,7 @@ import me.jochum.filmqueuer.domain.Queue
 import me.jochum.filmqueuer.domain.QueueRepository
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -27,6 +28,7 @@ class MySqlQueueRepository : QueueRepository {
                     id = row[QueueTable.id],
                     name = row[QueueTable.name]!!,
                     description = row[QueueTable.description],
+                    imagePath = row[QueueTable.imagePath],
                     createdAt = row[QueueTable.createdAt],
                 )
             else -> throw IllegalArgumentException("Unknown queue type: ${row[QueueTable.type]}")
@@ -61,6 +63,7 @@ class MySqlQueueRepository : QueueRepository {
                         it[personTmdbId] = null
                         it[name] = queue.name
                         it[description] = queue.description
+                        it[imagePath] = queue.imagePath
                         it[createdAt] = queue.createdAt
                         it[sortOrder] = nextSortOrder
                     }
@@ -101,5 +104,15 @@ class MySqlQueueRepository : QueueRepository {
             } catch (e: Exception) {
                 false
             }
+        }
+
+    override suspend fun updateImagePath(
+        id: UUID,
+        imagePath: String?,
+    ): Boolean =
+        newSuspendedTransaction {
+            QueueTable.update({ (QueueTable.id eq id) and (QueueTable.type eq "NAMED") }) {
+                it[QueueTable.imagePath] = imagePath
+            } > 0
         }
 }

@@ -21,6 +21,8 @@ const {
     renderPager,
     renderEditSortNameModal,
     renderEditSortTitleModal,
+    renderEditQueueImageModal,
+    renderQueueDetailShell,
     renderLinkModal,
     renderLinkSearchResults,
 } = require('../render.js');
@@ -163,6 +165,34 @@ describe('avatarHtml', () => {
         const dom = parse(avatarHtml(queue));
         expect(dom.querySelector('img')).toBeNull();
         expect(dom.querySelector('.avatar').textContent).toBe('W');
+    });
+
+    test('renders an image for a NAMED queue with an image path', () => {
+        const queue = { type: 'NAMED', name: 'Weekend Watchlist', imagePath: 'https://example.com/thumb.jpg' };
+        const dom = parse(avatarHtml(queue));
+        const img = dom.querySelector('img');
+        expect(img).not.toBeNull();
+        expect(img.getAttribute('src')).toBe('https://example.com/thumb.jpg');
+    });
+
+    test('resolves a locally-stored image path against the backend origin', () => {
+        const queue = { type: 'NAMED', name: 'Weekend Watchlist', imagePath: '/images/queue/abc123.jpg' };
+        const dom = parse(avatarHtml(queue));
+        expect(dom.querySelector('img').getAttribute('src')).toBe('http://localhost:8080/images/queue/abc123.jpg');
+    });
+});
+
+describe('renderQueueDetailShell', () => {
+    test('shows a clickable thumbnail edit affordance for a NAMED queue', () => {
+        const queue = { type: 'NAMED', name: 'Weekend Watchlist', imagePath: null };
+        const dom = parse(renderQueueDetailShell(queue));
+        expect(dom.querySelector('[data-edit-queue-image]')).not.toBeNull();
+    });
+
+    test('does not show the thumbnail edit affordance for a PERSON queue', () => {
+        const queue = { type: 'PERSON', person: { name: 'Tom Hanks', department: 'ACTING', imagePath: null } };
+        const dom = parse(renderQueueDetailShell(queue));
+        expect(dom.querySelector('[data-edit-queue-image]')).toBeNull();
     });
 });
 
@@ -567,6 +597,19 @@ describe('renderEditSortTitleModal', () => {
         const dom = parse(renderEditSortTitleModal({ tmdbId: 238, title: 'The Godfather', sortTitle: 'Godfather, The' }));
         expect(dom.querySelector('.link-modal-source').textContent).toBe('The Godfather');
         expect(dom.querySelector('#sortTitleInput').value).toBe('Godfather, The');
+    });
+});
+
+describe('renderEditQueueImageModal', () => {
+    test('pre-fills the input with the current image path', () => {
+        const dom = parse(renderEditQueueImageModal({ type: 'NAMED', name: 'Weekend Watchlist', imagePath: 'https://example.com/thumb.jpg' }));
+        expect(dom.querySelector('.link-modal-source').textContent).toBe('Weekend Watchlist');
+        expect(dom.querySelector('#queueImageInput').value).toBe('https://example.com/thumb.jpg');
+    });
+
+    test('leaves the input blank when the queue has no image yet', () => {
+        const dom = parse(renderEditQueueImageModal({ type: 'NAMED', name: 'Weekend Watchlist' }));
+        expect(dom.querySelector('#queueImageInput').value).toBe('');
     });
 });
 

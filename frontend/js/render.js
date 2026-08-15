@@ -1,3 +1,11 @@
+// Backend-served images (e.g. locally-stored queue thumbnails) come back as a path like
+// "/images/queue/<file>.jpg" rather than a full URL - must match api.js's API_BASE origin.
+const IMAGE_BASE_URL = 'http://localhost:8080';
+
+function resolveImageUrl(path) {
+    return path.startsWith('http') ? path : `${IMAGE_BASE_URL}${path}`;
+}
+
 const DEPARTMENT_ROLES = {
     ACTING: 'Actor',
     DIRECTING: 'Director',
@@ -55,6 +63,9 @@ export function avatarHtml(queue, size = '') {
     const cls = `avatar ${size}`.trim();
     if (queue.type === 'PERSON' && queue.person?.imagePath) {
         return `<div class="${cls}"><img src="${queue.person.imagePath}" alt="${esc(queue.person.name)}"></div>`;
+    }
+    if (queue.type === 'NAMED' && queue.imagePath) {
+        return `<div class="${cls}"><img src="${resolveImageUrl(queue.imagePath)}" alt="${esc(queueDisplayName(queue))}"></div>`;
     }
     const initial = queueDisplayName(queue).charAt(0).toUpperCase() || '?';
     return `<div class="${cls}">${initial}</div>`;
@@ -279,12 +290,18 @@ export function renderRankList(queues) {
 export function renderQueueDetailShell(queue) {
     const name = queueDisplayName(queue);
     const showFilmographyTab = queue.type === 'PERSON';
+    const editableAvatar = queue.type === 'NAMED'
+        ? `<button type="button" class="avatar-edit-btn" data-edit-queue-image title="Set thumbnail image">${avatarHtml(queue, 'avatar-lg')}</button>`
+        : '';
     return `
         <div class="page">
             <div class="detail-layout">
                 <div class="detail-side">
                     <div class="panel">
-                        <h2 class="detail-title">${esc(name)}</h2>
+                        <div class="detail-title-row">
+                            ${editableAvatar}
+                            <h2 class="detail-title">${esc(name)}</h2>
+                        </div>
                         <p class="detail-stats" id="queueStats">Loading...</p>
                         <hr class="section-divider">
                         <div id="queueFilms" class="queue-film-list"><p class="loading-text">Loading queue films...</p></div>
@@ -577,6 +594,26 @@ export function renderEditSortTitleModal(film) {
                 <div class="modal-footer">
                     <button class="btn" id="sortTitleModalClose">Cancel</button>
                     <button class="btn btn-primary" id="sortTitleModalSave">Save</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderEditQueueImageModal(queue) {
+    return `
+        <div class="modal-overlay">
+            <div class="modal-dialog">
+                <div class="modal-header"><h3>Set thumbnail image</h3></div>
+                <div class="modal-body">
+                    <p class="link-modal-source">${esc(queueDisplayName(queue))}</p>
+                    <div class="field-row">
+                        <input type="text" id="queueImageInput" placeholder="https://..." value="${esc(queue.imagePath || '')}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="queueImageModalClose">Cancel</button>
+                    <button class="btn btn-primary" id="queueImageModalSave">Save</button>
                 </div>
             </div>
         </div>

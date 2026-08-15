@@ -10,6 +10,7 @@ data class QueueDto(
     val person: SavedPersonDto? = null,
     val name: String? = null,
     val description: String? = null,
+    val imagePath: String? = null,
     val filmCount: Int = 0,
 )
 
@@ -34,4 +35,9 @@ data class QueuePreviewsDto(
 data class CreateNamedQueueDto(
     val name: String,
     val description: String? = null,
+)
+
+@Serializable
+data class UpdateQueueImageDto(
+    val imagePath: String? = null,
 )

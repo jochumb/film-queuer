@@ -10,6 +10,7 @@ object QueueTable : Table("queues") {
     val personTmdbId = integer("person_tmdb_id").nullable()
     val name = varchar("name", 255).nullable()
     val description = text("description").nullable()
+    val imagePath = varchar("image_path", 500).nullable()
     val createdAt = timestamp("created_at").default(Instant.now())
     val sortOrder = integer("sort_order").default(0)
 

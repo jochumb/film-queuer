@@ -208,4 +208,13 @@ describe('write endpoints', () => {
             body: JSON.stringify({ sortTitle: 'Godfather, The' }),
         });
     });
+
+    test('updateQueueImagePath PUTs the new image path', async () => {
+        await api.updateQueueImagePath('queue-1', 'https://example.com/thumb.jpg');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/queues/queue-1/image-path`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imagePath: 'https://example.com/thumb.jpg' }),
+        });
+    });
 });
