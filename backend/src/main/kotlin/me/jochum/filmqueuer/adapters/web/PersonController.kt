@@ -19,9 +19,9 @@ private suspend fun enrichWithOwnership(
     films: List<FilmDto>,
     externalFilmRefRepository: ExternalFilmRefRepository,
 ): List<FilmDto> {
-    val refsByTmdbId = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.id }).associateBy { it.filmTmdbId }
+    val refs = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.id to it.tv })
     return films.map { film ->
-        val ref = refsByTmdbId[film.id]
+        val ref = refs[film.id to film.tv]
         film.copy(owned = ref?.owned ?: false, watched = ref?.watched ?: false)
     }
 }
@@ -171,7 +171,7 @@ fun Route.configurePersonRoutes(
                                         overview = firstCredit.overview,
                                         mediaType = firstCredit.mediaType,
                                         role = combinedRoles.takeIf { it.isNotBlank() },
-                                        tv = false,
+                                        tv = firstCredit.mediaType == "tv",
                                     )
                                 }
                         Department.DIRECTING, Department.WRITING, Department.OTHER ->
@@ -198,7 +198,7 @@ fun Route.configurePersonRoutes(
                                         overview = firstCredit.overview,
                                         mediaType = firstCredit.mediaType,
                                         role = combinedJobs.takeIf { it.isNotBlank() },
-                                        tv = false,
+                                        tv = firstCredit.mediaType == "tv",
                                     )
                                 }
                     }

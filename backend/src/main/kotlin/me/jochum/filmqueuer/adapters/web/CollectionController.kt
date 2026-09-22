@@ -25,6 +25,7 @@ private fun Film.toResponseDto(
     owned: Boolean = false,
     watched: Boolean = false,
 ) = FilmResponseDto(
+    id = id.toString(),
     tmdbId = tmdbId,
     title = title,
     originalTitle = originalTitle,
@@ -32,6 +33,7 @@ private fun Film.toResponseDto(
     runtime = runtime,
     genres = genres,
     posterPath = posterPath,
+    tv = tv,
     directors = directorTmdbIds.mapNotNull { directorsByTmdbId[it] },
     sortTitle = sortTitle ?: title,
     owned = owned,
@@ -39,19 +41,22 @@ private fun Film.toResponseDto(
 )
 
 private fun ExternalFilmRef.toDto(
-    filmsByTmdbId: Map<Int, Film>,
+    filmsById: Map<UUID, Film>,
     directorsByTmdbId: Map<Int, DirectorDto>,
-) = ExternalFilmRefDto(
-    id = id.toString(),
-    source = source,
-    title = title,
-    year = year,
-    filmTmdbId = filmTmdbId,
-    owned = owned,
-    watched = watched,
-    removed = removed,
-    film = filmTmdbId?.let { filmsByTmdbId[it]?.toResponseDto(directorsByTmdbId, owned, watched) },
-)
+): ExternalFilmRefDto {
+    val film = filmId?.let { filmsById[it] }
+    return ExternalFilmRefDto(
+        id = id.toString(),
+        source = source,
+        title = title,
+        year = year,
+        filmTmdbId = film?.tmdbId,
+        owned = owned,
+        watched = watched,
+        removed = removed,
+        film = film?.toResponseDto(directorsByTmdbId, owned, watched),
+    )
+}
 
 private fun ImportSummary.toDto() =
     ImportSummaryDto(
@@ -151,16 +156,16 @@ fun Route.configureCollectionRoutes(
                         queryParam,
                     )
                 val total = externalFilmRefRepository.count(ownedParam, watchedParam, unmatchedParam, removedParam, queryParam)
-                val filmsByTmdbId =
-                    page.mapNotNull { it.filmTmdbId }
+                val filmsById =
+                    page.mapNotNull { it.filmId }
                         .toSet()
-                        .mapNotNull { tmdbId -> filmRepository.findByTmdbId(tmdbId)?.let { tmdbId to it } }
+                        .mapNotNull { id -> filmRepository.findById(id)?.let { id to it } }
                         .toMap()
-                val directorsByTmdbId = resolveDirectors(filmsByTmdbId.values, personRepository)
+                val directorsByTmdbId = resolveDirectors(filmsById.values, personRepository)
 
                 call.respond(
                     CollectionPageDto(
-                        items = page.map { it.toDto(filmsByTmdbId, directorsByTmdbId) },
+                        items = page.map { it.toDto(filmsById, directorsByTmdbId) },
                         total = total,
                         offset = offset,
                         limit = limit,
@@ -185,14 +190,14 @@ fun Route.configureCollectionRoutes(
                 val count = (call.request.queryParameters["count"]?.toIntOrNull() ?: 3).coerceIn(1, 20)
 
                 val picks = externalFilmRefRepository.findRandomPicks(ownedParam, watchedParam, maxRuntimeParam, count)
-                val filmsByTmdbId =
-                    picks.mapNotNull { it.filmTmdbId }
+                val filmsById =
+                    picks.mapNotNull { it.filmId }
                         .toSet()
-                        .mapNotNull { tmdbId -> filmRepository.findByTmdbId(tmdbId)?.let { tmdbId to it } }
+                        .mapNotNull { id -> filmRepository.findById(id)?.let { id to it } }
                         .toMap()
-                val directorsByTmdbId = resolveDirectors(filmsByTmdbId.values, personRepository)
+                val directorsByTmdbId = resolveDirectors(filmsById.values, personRepository)
 
-                call.respond(picks.map { it.toDto(filmsByTmdbId, directorsByTmdbId) })
+                call.respond(picks.map { it.toDto(filmsById, directorsByTmdbId) })
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to fetch random picks: ${e.message}")
             }
@@ -246,9 +251,9 @@ fun Route.configureCollectionRoutes(
                 if (updated == null) {
                     call.respond(HttpStatusCode.NotFound, "Collection item not found")
                 } else {
-                    val film = filmRepository.findByTmdbId(linkRequest.tmdbId)
+                    val film = filmRepository.findByTmdbId(linkRequest.tmdbId, linkRequest.tv)
                     val directorsByTmdbId = resolveDirectors(listOfNotNull(film), personRepository)
-                    call.respond(updated.toDto(film?.let { mapOf(it.tmdbId to it) } ?: emptyMap(), directorsByTmdbId))
+                    call.respond(updated.toDto(film?.let { mapOf(it.id to it) } ?: emptyMap(), directorsByTmdbId))
                 }
             } catch (e: IllegalArgumentException) {
                 call.respond(HttpStatusCode.BadRequest, "Invalid id: ${e.message}")

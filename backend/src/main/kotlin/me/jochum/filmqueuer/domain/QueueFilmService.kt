@@ -16,10 +16,10 @@ class QueueFilmService(
         val film = createFilmFromTmdbId(tmdbId, tv)
 
         // Save film
-        filmRepository.save(film)
+        val saved = filmRepository.save(film)
 
         // Add film to queue
-        return queueFilmRepository.addFilmToQueue(queueId, tmdbId)
+        return queueFilmRepository.addFilmToQueue(queueId, saved.id)
     }
 
     private suspend fun createFilmFromTmdbId(
@@ -46,19 +46,19 @@ class QueueFilmService(
 
     suspend fun removeFilmFromQueue(
         queueId: UUID,
-        filmTmdbId: Int,
-    ): Boolean = queueFilmRepository.removeFilmFromQueue(queueId, filmTmdbId)
+        filmId: UUID,
+    ): Boolean = queueFilmRepository.removeFilmFromQueue(queueId, filmId)
 
     suspend fun getQueueFilms(queueId: UUID): List<Film> = queueFilmRepository.findFilmsByQueueId(queueId)
 
     suspend fun isFilmInQueue(
         queueId: UUID,
-        filmTmdbId: Int,
-    ): Boolean = queueFilmRepository.isFilmInQueue(queueId, filmTmdbId)
+        filmId: UUID,
+    ): Boolean = queueFilmRepository.isFilmInQueue(queueId, filmId)
 
     suspend fun reorderQueueFilms(
         queueId: UUID,
-        filmOrder: List<Int>,
+        filmOrder: List<UUID>,
     ): Boolean = queueFilmRepository.reorderQueueFilms(queueId, filmOrder)
 
     suspend fun clearQueue(queueId: UUID): Boolean = queueFilmRepository.deleteAllForQueue(queueId)

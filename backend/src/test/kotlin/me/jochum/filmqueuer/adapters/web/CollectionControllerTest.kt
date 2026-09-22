@@ -119,18 +119,20 @@ class CollectionControllerTest {
     @Test
     fun `GET collection should return a paginated page enriched with film details`() =
         testApplication {
+            val filmId = UUID.randomUUID()
             val ref =
                 ExternalFilmRef(
                     id = UUID.randomUUID(),
                     source = "LETTERBOXD",
                     title = "Fight Club",
                     year = 1999,
-                    filmTmdbId = 550,
+                    filmId = filmId,
                     owned = true,
                 )
             coEvery { externalFilmRefRepository.findPage(null, null, null, CollectionSortField.TITLE, false, 0, 40) } returns listOf(ref)
             coEvery { externalFilmRefRepository.count(null, null, null) } returns 1
-            coEvery { filmRepository.findByTmdbId(550) } returns Film(tmdbId = 550, title = "Fight Club", posterPath = "/poster.jpg")
+            coEvery { filmRepository.findById(filmId) } returns
+                Film(id = filmId, tmdbId = 550, title = "Fight Club", posterPath = "/poster.jpg")
 
             application {
                 configureSerialization()
@@ -206,6 +208,7 @@ class CollectionControllerTest {
     @Test
     fun `GET collection should filter by owned watched and unmatched query params`() =
         testApplication {
+            val ownedMatchedFilmId = UUID.randomUUID()
             val ownedMatched =
                 ExternalFilmRef(
                     id = UUID.randomUUID(),
@@ -213,7 +216,7 @@ class CollectionControllerTest {
                     title = "Owned Matched",
                     year = 2000,
                     owned = true,
-                    filmTmdbId = 1,
+                    filmId = ownedMatchedFilmId,
                 )
             val watchedUnmatched =
                 ExternalFilmRef(id = UUID.randomUUID(), source = "LETTERBOXD", title = "Watched Unmatched", year = 2001, watched = true)
@@ -225,7 +228,8 @@ class CollectionControllerTest {
                 externalFilmRefRepository.findPage(null, null, true, CollectionSortField.TITLE, false, 0, 40)
             } returns listOf(watchedUnmatched)
             coEvery { externalFilmRefRepository.count(null, null, true) } returns 1
-            coEvery { filmRepository.findByTmdbId(1) } returns Film(tmdbId = 1, title = "Owned Matched")
+            coEvery { filmRepository.findById(ownedMatchedFilmId) } returns
+                Film(id = ownedMatchedFilmId, tmdbId = 1, title = "Owned Matched")
 
             application {
                 configureSerialization()
@@ -284,9 +288,10 @@ class CollectionControllerTest {
     fun `PUT collection id link should update and return the ref`() =
         testApplication {
             val id = UUID.randomUUID()
-            val updated = ExternalFilmRef(id = id, source = "LETTERBOXD", title = "Fight Club", year = 1999, filmTmdbId = 550, owned = true)
+            val filmId = UUID.randomUUID()
+            val updated = ExternalFilmRef(id = id, source = "LETTERBOXD", title = "Fight Club", year = 1999, filmId = filmId, owned = true)
             coEvery { letterboxdImportService.linkManually(id, 550) } returns updated
-            coEvery { filmRepository.findByTmdbId(550) } returns Film(tmdbId = 550, title = "Fight Club")
+            coEvery { filmRepository.findByTmdbId(550, false) } returns Film(id = filmId, tmdbId = 550, title = "Fight Club")
 
             application {
                 configureSerialization()
@@ -307,10 +312,11 @@ class CollectionControllerTest {
     fun `PUT collection id link should forward tv=true so mini-series link correctly`() =
         testApplication {
             val id = UUID.randomUUID()
+            val filmId = UUID.randomUUID()
             val updated =
-                ExternalFilmRef(id = id, source = "LETTERBOXD", title = "Chernobyl", year = 2019, filmTmdbId = 87108, owned = true)
+                ExternalFilmRef(id = id, source = "LETTERBOXD", title = "Chernobyl", year = 2019, filmId = filmId, owned = true)
             coEvery { letterboxdImportService.linkManually(id, 87108, true) } returns updated
-            coEvery { filmRepository.findByTmdbId(87108) } returns Film(tmdbId = 87108, title = "Chernobyl", tv = true)
+            coEvery { filmRepository.findByTmdbId(87108, true) } returns Film(id = filmId, tmdbId = 87108, title = "Chernobyl", tv = true)
 
             application {
                 configureSerialization()
@@ -430,18 +436,19 @@ class CollectionControllerTest {
     @Test
     fun `GET collection random-picks should default to owned, unwatched, 100-minute cap, count 3`() =
         testApplication {
+            val filmId = UUID.randomUUID()
             val ref =
                 ExternalFilmRef(
                     id = UUID.randomUUID(),
                     source = "LETTERBOXD",
                     title = "Short Film",
                     year = 1999,
-                    filmTmdbId = 550,
+                    filmId = filmId,
                     owned = true,
                     watched = false,
                 )
             coEvery { externalFilmRefRepository.findRandomPicks(true, false, 100, 3) } returns listOf(ref)
-            coEvery { filmRepository.findByTmdbId(550) } returns Film(tmdbId = 550, title = "Short Film", runtime = 90)
+            coEvery { filmRepository.findById(filmId) } returns Film(id = filmId, tmdbId = 550, title = "Short Film", runtime = 90)
 
             application {
                 configureSerialization()

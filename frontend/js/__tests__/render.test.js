@@ -25,6 +25,7 @@ const {
     renderQueueDetailShell,
     renderLinkModal,
     renderLinkSearchResults,
+    filmKey,
 } = require('../render.js');
 
 function parse(html) {
@@ -381,21 +382,21 @@ describe('renderQueueFilms', () => {
         expect(renderQueueFilms([])).toContain('No films in this queue yet');
     });
 
-    test('renders a row per film with year and runtime', () => {
+    test('renders a row per film with year and runtime, keyed by the film\'s internal id (not tmdbId)', () => {
         const films = [
-            { tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, posterPath: null },
+            { id: 'film-uuid-1', tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, posterPath: null },
         ];
         const dom = parse(renderQueueFilms(films));
         const row = dom.querySelector('.queue-film-row');
-        expect(row.dataset.dragId).toBe('550');
+        expect(row.dataset.dragId).toBe('film-uuid-1');
         expect(row.querySelector('.qf-title').textContent).toBe('Fight Club');
         expect(row.querySelector('.qf-sub').textContent).toBe('1999 · 139m');
-        expect(row.querySelector('.remove-film-btn').dataset.id).toBe('550');
+        expect(row.querySelector('.remove-film-btn').dataset.id).toBe('film-uuid-1');
     });
 
     test('renders owned/watched badges when set on the film', () => {
         const films = [
-            { tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, owned: true, watched: true },
+            { id: 'film-uuid-1', tmdbId: 550, title: 'Fight Club', releaseDate: '1999-10-15', runtime: 139, owned: true, watched: true },
         ];
         const dom = parse(renderQueueFilms(films));
         expect(dom.querySelector('.flag-owned')).not.toBeNull();
@@ -413,8 +414,8 @@ describe('renderFilmGrid', () => {
     });
 
     test('marks films already in the queue as disabled', () => {
-        const films = [{ id: 550, title: 'Fight Club', releaseDate: '1999-10-15', voteAverage: 8.4 }];
-        const dom = parse(renderFilmGrid(films, new Set([550])));
+        const films = [{ id: 550, title: 'Fight Club', releaseDate: '1999-10-15', voteAverage: 8.4, tv: false }];
+        const dom = parse(renderFilmGrid(films, new Set([filmKey(550, false)])));
         const btn = dom.querySelector('.add-tile-btn');
         expect(btn.hasAttribute('disabled')).toBe(true);
         expect(btn.textContent.trim()).toBe('In queue');
@@ -422,8 +423,17 @@ describe('renderFilmGrid', () => {
         expect(dom.querySelector('.film-tile').classList.contains('in-queue')).toBe(true);
     });
 
+    test('does not confuse a queued movie with a TV show sharing the same tmdb id', () => {
+        const films = [{ id: 206647, title: 'Histoire(s) du cinéma', releaseDate: '1989-05-07', voteAverage: 0, tv: true }];
+        // Only the movie with this id (206647, "Spectre") is queued - the TV show is not.
+        const dom = parse(renderFilmGrid(films, new Set([filmKey(206647, false)])));
+        const btn = dom.querySelector('.add-tile-btn');
+        expect(btn.hasAttribute('disabled')).toBe(false);
+        expect(btn.textContent.trim()).toBe('Add to queue');
+    });
+
     test('leaves films not yet in the queue enabled', () => {
-        const films = [{ id: 551, title: 'Se7en', releaseDate: '1995-09-22', voteAverage: 0 }];
+        const films = [{ id: 551, title: 'Se7en', releaseDate: '1995-09-22', voteAverage: 0, tv: false }];
         const dom = parse(renderFilmGrid(films, new Set()));
         const btn = dom.querySelector('.add-tile-btn');
         expect(btn.hasAttribute('disabled')).toBe(false);
@@ -468,7 +478,9 @@ describe('renderCollectionRows', () => {
             year: 1999,
             filmTmdbId: 550,
             film: {
+                id: 'film-uuid-550',
                 tmdbId: 550,
+                tv: false,
                 title: 'Fight Club',
                 sortTitle: 'Fight Club',
                 releaseDate: '1999-10-15',
@@ -485,13 +497,30 @@ describe('renderCollectionRows', () => {
         expect(directorEl.dataset.directorId).toBe('7');
         expect(directorEl.dataset.directorSortName).toBe('Fincher');
         const titleEl = row.querySelector('.ct-title .editable-title');
-        expect(titleEl.dataset.titleId).toBe('550');
+        expect(titleEl.dataset.titleId).toBe('film-uuid-550');
         expect(titleEl.dataset.titleSort).toBe('Fight Club');
         expect(row.querySelector('.unmatched-icon')).toBeNull();
         expect(row.querySelector('.ct-thumb img').getAttribute('src')).toBe('/poster.jpg');
-        expect(row.querySelector('.add-to-queue-btn').hasAttribute('disabled')).toBe(false);
+        const addToQueueBtn = row.querySelector('.add-to-queue-btn');
+        expect(addToQueueBtn.hasAttribute('disabled')).toBe(false);
+        expect(addToQueueBtn.dataset.tmdbId).toBe('550');
+        expect(addToQueueBtn.dataset.tv).toBe('0');
         expect(row.querySelector('.row-menu-toggle')).not.toBeNull();
         expect(row.querySelector('.row-menu-dropdown .fix-match-btn')).not.toBeNull();
+    });
+
+    test('tags the add-to-queue button as TV when the matched film is a TV show', () => {
+        const items = [{
+            id: 'ref-tv',
+            title: 'Chernobyl',
+            year: 2019,
+            filmTmdbId: 87108,
+            film: { id: 'film-uuid-87108', tmdbId: 87108, tv: true, title: 'Chernobyl', releaseDate: '2019-05-06', posterPath: null },
+        }];
+        const rows = parseRows(renderCollectionRows(items));
+        const addToQueueBtn = rows.querySelector('.add-to-queue-btn');
+        expect(addToQueueBtn.dataset.tmdbId).toBe('87108');
+        expect(addToQueueBtn.dataset.tv).toBe('1');
     });
 
     test('renders the sort title (not the display title) as the data attribute for editing', () => {
@@ -500,7 +529,7 @@ describe('renderCollectionRows', () => {
             title: 'The Godfather',
             year: 1972,
             filmTmdbId: 238,
-            film: { tmdbId: 238, title: 'The Godfather', sortTitle: 'Godfather, The', releaseDate: '1972-03-14', posterPath: null },
+            film: { id: 'film-uuid-238', tmdbId: 238, title: 'The Godfather', sortTitle: 'Godfather, The', releaseDate: '1972-03-14', posterPath: null },
         }];
         const rows = parseRows(renderCollectionRows(items));
         const titleEl = rows.querySelector('.ct-title .editable-title');

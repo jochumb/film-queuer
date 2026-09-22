@@ -23,6 +23,7 @@ import {
     renderEditSortTitleModal,
     renderEditQueueImageModal,
     avatarHtml,
+    filmKey,
 } from './render.js';
 
 const app = document.getElementById('app');
@@ -358,7 +359,7 @@ async function loadQueueFilms(queueId) {
     try {
         const data = await api.getQueueFilms(queueId);
         const films = data.films || [];
-        queuedFilmIds = new Set(films.map((f) => f.tmdbId));
+        queuedFilmIds = new Set(films.map((f) => filmKey(f.tmdbId, f.tv)));
 
         container.innerHTML = renderQueueFilms(films);
         refreshIcons();
@@ -368,7 +369,7 @@ async function loadQueueFilms(queueId) {
 
         if (films.length > 0) {
             enableDragReorder(container, '.queue-film-row', (newOrder) =>
-                reorderQueueFilms(queueId, newOrder.map(Number)));
+                reorderQueueFilms(queueId, newOrder));
         }
 
         reconcileQueuedTiles();
@@ -388,7 +389,7 @@ async function reorderQueueFilms(queueId, filmOrder) {
     }
 }
 
-async function handleRemoveFilm(tmdbId, title) {
+async function handleRemoveFilm(filmId, title) {
     const confirmed = await notifications.confirm(
         'Remove film',
         `Remove "${title}" from this queue?`,
@@ -398,7 +399,7 @@ async function handleRemoveFilm(tmdbId, title) {
     if (!confirmed) return;
 
     try {
-        const response = await api.removeFilmFromQueue(currentQueueId, tmdbId);
+        const response = await api.removeFilmFromQueue(currentQueueId, filmId);
         if (response.ok) {
             notifications.success(`"${title}" removed from the queue.`);
             loadQueueFilms(currentQueueId);
@@ -414,7 +415,7 @@ async function handleRemoveFilm(tmdbId, title) {
 }
 
 async function handleAddFilm(tmdbId, tv, title) {
-    if (queuedFilmIds.has(tmdbId)) return;
+    if (queuedFilmIds.has(filmKey(tmdbId, tv))) return;
 
     try {
         const response = await api.addFilmToQueue(currentQueueId, { tmdbId, tv });
@@ -434,7 +435,8 @@ async function handleAddFilm(tmdbId, tv, title) {
 function reconcileQueuedTiles() {
     document.querySelectorAll('#app [data-add-film]').forEach((button) => {
         const id = Number(button.dataset.addFilm);
-        const isQueued = queuedFilmIds.has(id);
+        const tv = button.dataset.tv === '1';
+        const isQueued = queuedFilmIds.has(filmKey(id, tv));
         button.disabled = isQueued;
         button.textContent = isQueued ? 'In queue' : 'Add to queue';
         button.closest('.film-tile')?.classList.toggle('in-queue', isQueued);
@@ -643,7 +645,47 @@ function showCollection() {
         collectionState.offset = 0;
         loadCollectionPage();
     });
+    document.getElementById('uploadOwnedCsvBtn').addEventListener('click', () => {
+        document.getElementById('ownedCsvInput').click();
+    });
+    document.getElementById('uploadWatchedCsvBtn').addEventListener('click', () => {
+        document.getElementById('watchedCsvInput').click();
+    });
+    document.getElementById('ownedCsvInput').addEventListener('change', (e) => {
+        handleCollectionCsvUpload(e.target, 'owned');
+    });
+    document.getElementById('watchedCsvInput').addEventListener('change', (e) => {
+        handleCollectionCsvUpload(e.target, 'watched');
+    });
+
     loadCollectionPage();
+}
+
+async function handleCollectionCsvUpload(inputEl, kind) {
+    const file = inputEl.files[0];
+    if (!file) return;
+
+    try {
+        const csvText = await file.text();
+        const importFn = kind === 'owned' ? api.importOwnedCollection : api.importWatchedCollection;
+        const response = await importFn(csvText);
+        if (response.ok) {
+            const summary = await response.json();
+            const unmatchedNote = summary.unmatched.length > 0 ? `, ${summary.unmatched.length} unmatched` : '';
+            notifications.success(
+                `Imported ${summary.totalRows} row${summary.totalRows === 1 ? '' : 's'}: ${summary.created} new, ${summary.updated} updated${unmatchedNote}.`,
+            );
+            loadCollectionPage();
+        } else {
+            const message = await response.text();
+            notifications.error(`Import failed: ${message}`);
+        }
+    } catch (error) {
+        console.error('Error importing collection CSV:', error);
+        notifications.error('Failed to import CSV file.');
+    } finally {
+        inputEl.value = '';
+    }
 }
 
 async function handleRemoveCollectionItem(id, title) {
@@ -765,8 +807,8 @@ async function saveSortName() {
     }
 }
 
-function openEditSortTitleModal(tmdbId, title, sortTitle) {
-    editSortTitleFilm = { tmdbId: Number(tmdbId), title, sortTitle };
+function openEditSortTitleModal(id, title, sortTitle) {
+    editSortTitleFilm = { id, title, sortTitle };
     openModal(renderEditSortTitleModal(editSortTitleFilm));
 
     document.getElementById('sortTitleModalClose').addEventListener('click', closeModal);
@@ -784,7 +826,7 @@ async function saveSortTitle() {
         return;
     }
     try {
-        const response = await api.updateFilmSortTitle(editSortTitleFilm.tmdbId, sortTitle);
+        const response = await api.updateFilmSortTitle(editSortTitleFilm.id, sortTitle);
         if (response.ok) {
             notifications.success(`Updated sort title for "${editSortTitleFilm.title}".`);
             closeModal();
@@ -856,8 +898,8 @@ async function selectLinkMatch(tmdbId, title, tv) {
     }
 }
 
-async function openQueuePickerModal(tmdbId, title) {
-    queuePickerFilm = { tmdbId: Number(tmdbId), title };
+async function openQueuePickerModal(tmdbId, title, tv) {
+    queuePickerFilm = { tmdbId: Number(tmdbId), tv, title };
 
     try {
         const queues = await api.getQueues();
@@ -872,7 +914,7 @@ async function openQueuePickerModal(tmdbId, title) {
 async function addCollectionFilmToQueue(queueId) {
     if (!queuePickerFilm) return;
     try {
-        const response = await api.addFilmToQueue(queueId, { tmdbId: queuePickerFilm.tmdbId });
+        const response = await api.addFilmToQueue(queueId, { tmdbId: queuePickerFilm.tmdbId, tv: queuePickerFilm.tv });
         if (response.ok) {
             notifications.success(`"${queuePickerFilm.title}" added to the queue!`);
             closeModal();
@@ -893,7 +935,7 @@ document.addEventListener('click', (e) => {
 
     const watchedBtn = e.target.closest('[data-watched-film]');
     if (watchedBtn) {
-        handleMarkWatched(watchedBtn.dataset.watchedQueue, Number(watchedBtn.dataset.watchedFilm), watchedBtn.dataset.watchedTitle);
+        handleMarkWatched(watchedBtn.dataset.watchedQueue, watchedBtn.dataset.watchedFilm, watchedBtn.dataset.watchedTitle);
         return;
     }
 
@@ -930,7 +972,7 @@ document.addEventListener('click', (e) => {
 
     const removeBtn = e.target.closest('.remove-film-btn');
     if (removeBtn) {
-        handleRemoveFilm(Number(removeBtn.dataset.id), removeBtn.dataset.title);
+        handleRemoveFilm(removeBtn.dataset.id, removeBtn.dataset.title);
         return;
     }
 
@@ -975,7 +1017,7 @@ document.addEventListener('click', (e) => {
 
     const addToQueueBtn = e.target.closest('.add-to-queue-btn');
     if (addToQueueBtn && !addToQueueBtn.disabled) {
-        openQueuePickerModal(addToQueueBtn.dataset.tmdbId, addToQueueBtn.dataset.title);
+        openQueuePickerModal(addToQueueBtn.dataset.tmdbId, addToQueueBtn.dataset.title, addToQueueBtn.dataset.tv === '1');
         return;
     }
 

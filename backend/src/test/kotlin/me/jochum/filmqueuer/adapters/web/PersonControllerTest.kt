@@ -45,7 +45,7 @@ class PersonControllerTest {
         personSelectionService = mockk()
         personRepository = mockk()
         externalFilmRefRepository = mockk()
-        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyList()
+        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyMap()
     }
 
     @Test
@@ -248,18 +248,19 @@ class PersonControllerTest {
                         ),
                 )
             coEvery { tmdbService.getPersonMovieCredits(123) } returns credits
-            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550, 13)) } returns
-                listOf(
-                    ExternalFilmRef(
-                        id = UUID.randomUUID(),
-                        source = "LETTERBOXD",
-                        title = "Fight Club",
-                        year = 1999,
-                        filmTmdbId = 550,
-                        owned = true,
-                        watched = false,
-                        createdAt = Instant.now(),
-                    ),
+            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550 to false, 13 to false)) } returns
+                mapOf(
+                    (550 to false) to
+                        ExternalFilmRef(
+                            id = UUID.randomUUID(),
+                            source = "LETTERBOXD",
+                            title = "Fight Club",
+                            year = 1999,
+                            filmId = UUID.randomUUID(),
+                            owned = true,
+                            watched = false,
+                            createdAt = Instant.now(),
+                        ),
                 )
 
             application {
@@ -281,6 +282,39 @@ class PersonControllerTest {
             val forrestGumpJson = responseBody.substringAfter("\"id\":13").substringBefore("}")
             assertTrue(forrestGumpJson.contains("\"owned\":false"))
             assertTrue(forrestGumpJson.contains("\"watched\":false"))
+        }
+
+    @Test
+    fun `GET persons filmography should report tv=true for a TV credit and tv=false for a movie credit`() =
+        testApplication {
+            // Given - a person with both a movie and a TV credit in their combined cast credits
+            val credits =
+                TmdbPersonCreditsResponse(
+                    cast =
+                        listOf(
+                            TmdbCastCredit(id = 550, title = "Fight Club", character = "Narrator", mediaType = "movie"),
+                            TmdbCastCredit(id = 1399, name = "Game of Thrones", character = "Himself", mediaType = "tv"),
+                        ),
+                )
+            coEvery { tmdbService.getPersonMovieCredits(123) } returns credits
+
+            application {
+                configureSerialization()
+                routing {
+                    configurePersonRoutes(tmdbService, personSelectionService, personRepository, externalFilmRefRepository)
+                }
+            }
+
+            // When
+            val response = client.get("/persons/123/filmography?department=Acting")
+
+            // Then
+            assertEquals(HttpStatusCode.OK, response.status)
+            val responseBody = response.bodyAsText()
+            val movieJson = responseBody.substringAfter("\"id\":550").substringBefore("}")
+            assertTrue(movieJson.contains("\"tv\":false"))
+            val tvJson = responseBody.substringAfter("\"id\":1399").substringBefore("}")
+            assertTrue(tvJson.contains("\"tv\":true"))
         }
 
     @Test

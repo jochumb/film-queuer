@@ -1,5 +1,6 @@
 # Personal data exports (not for version control)
 exports/
+backend/migrations/backups/
 
 # Gradle
 .gradle/

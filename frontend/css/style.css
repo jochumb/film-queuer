@@ -139,6 +139,7 @@ img { max-width: 100%; display: block; }
 }
 .page-header h1 { font-size: 1.15rem; margin: 0; font-weight: 700; }
 .page-header .subtitle { color: var(--text-dim); font-size: 0.82rem; }
+.collection-upload-actions { display: flex; gap: 0.5rem; margin-left: auto; }
 
 /* ===== Buttons & inputs ===== */
 .btn {

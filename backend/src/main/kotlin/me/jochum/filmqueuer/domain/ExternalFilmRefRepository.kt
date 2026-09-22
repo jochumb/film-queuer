@@ -35,14 +35,14 @@ interface ExternalFilmRefRepository {
         query: String? = null,
     ): Int
 
-    suspend fun findByFilmTmdbId(tmdbId: Int): ExternalFilmRef?
-
     /**
      * Batch lookup for showing owned/watched indicators on a list of films (queue films, search
-     * results, filmography) without an N+1 query per film. Excludes removed rows, so a hidden
-     * collection item doesn't show as owned/watched anywhere else in the app.
+     * results, filmography) without an N+1 query per film. Films are identified by (tmdbId, tv)
+     * since callers often have raw TMDB search/filmography results that may not exist as a Film
+     * row yet - a ref can only match one that does, so an unmatched pair simply has no entry.
+     * Excludes removed rows, so a hidden collection item doesn't show as owned/watched elsewhere.
      */
-    suspend fun findByFilmTmdbIds(tmdbIds: Collection<Int>): List<ExternalFilmRef>
+    suspend fun findByFilmTmdbIds(refs: Collection<Pair<Int, Boolean>>): Map<Pair<Int, Boolean>, ExternalFilmRef>
 
     suspend fun setRemoved(
         id: UUID,

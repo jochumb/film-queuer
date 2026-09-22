@@ -11,14 +11,15 @@ import io.ktor.server.routing.route
 import me.jochum.filmqueuer.adapters.tmdb.TmdbService
 import me.jochum.filmqueuer.domain.ExternalFilmRefRepository
 import me.jochum.filmqueuer.domain.FilmRepository
+import java.util.UUID
 
 private suspend fun enrichWithOwnership(
     films: List<FilmDto>,
     externalFilmRefRepository: ExternalFilmRefRepository,
 ): List<FilmDto> {
-    val refsByTmdbId = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.id }).associateBy { it.filmTmdbId }
+    val refs = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.id to it.tv })
     return films.map { film ->
-        val ref = refsByTmdbId[film.id]
+        val ref = refs[film.id to film.tv]
         film.copy(owned = ref?.owned ?: false, watched = ref?.watched ?: false)
     }
 }
@@ -129,12 +130,12 @@ fun Route.configureFilmRoutes(
          * Tag: Films
          * Description: Override the default sort key (leading "The"/"A"/"An" stripped) used to order the
          *   Collection page by title.
-         * Path: tmdbId [Int] TMDB film ID
+         * Path: id [UUID] Film's internal id (from the film's `id` field, not its TMDB id)
          */
-        put("/{tmdbId}/sort-title") {
-            val tmdbId = call.parameters["tmdbId"]?.toIntOrNull()
-            if (tmdbId == null) {
-                call.respond(HttpStatusCode.BadRequest, "Invalid tmdbId parameter")
+        put("/{id}/sort-title") {
+            val id = call.parameters["id"]?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid id parameter")
                 return@put
             }
 
@@ -145,7 +146,7 @@ fun Route.configureFilmRoutes(
                     return@put
                 }
 
-                val updated = filmRepository.updateSortTitle(tmdbId, updateDto.sortTitle.trim())
+                val updated = filmRepository.updateSortTitle(id, updateDto.sortTitle.trim())
                 if (updated) {
                     call.respond(HttpStatusCode.OK)
                 } else {

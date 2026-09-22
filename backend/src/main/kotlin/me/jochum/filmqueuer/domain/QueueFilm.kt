@@ -5,7 +5,7 @@ import java.util.UUID
 
 data class QueueFilm(
     val queueId: UUID,
-    val filmTmdbId: Int,
+    val filmId: UUID,
     val addedAt: Instant = Instant.now(),
     val sortOrder: Int = 0,
 )

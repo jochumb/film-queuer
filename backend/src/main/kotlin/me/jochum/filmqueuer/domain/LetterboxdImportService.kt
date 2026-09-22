@@ -109,7 +109,7 @@ class LetterboxdImportService(
                     externalFilmRefRepository.update(merged)
                     updated++
                 }
-                if (existing.filmTmdbId == null) {
+                if (existing.filmId == null) {
                     needsMatch.add(merged)
                 }
             }
@@ -198,12 +198,18 @@ class LetterboxdImportService(
                     }
                 // save() insert-ignores on conflict; a re-link of an already-matched film (e.g. to
                 // backfill data added since it was first matched) needs update() to actually apply.
-                if (filmRepository.findByTmdbId(tmdbId) == null) {
-                    filmRepository.save(film)
-                } else {
-                    filmRepository.update(film)
-                }
-                val updatedRef = ref.copy(filmTmdbId = tmdbId)
+                // Either way, the film's existing id (if any) must be preserved - update() is
+                // keyed by id, not by (tmdbId, tv).
+                val existingFilm = filmRepository.findByTmdbId(tmdbId, tv)
+                val storedFilm =
+                    if (existingFilm == null) {
+                        filmRepository.save(film)
+                    } else {
+                        val toStore = film.copy(id = existingFilm.id)
+                        filmRepository.update(toStore)
+                        toStore
+                    }
+                val updatedRef = ref.copy(filmId = storedFilm.id)
                 externalFilmRefRepository.update(updatedRef)
                 updatedRef
             }

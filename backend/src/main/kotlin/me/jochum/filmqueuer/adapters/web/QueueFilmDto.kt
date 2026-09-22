@@ -16,6 +16,9 @@ data class QueueFilmsDto(
 
 @Serializable
 data class FilmResponseDto(
+    @JsonSchema.Format("uuid")
+    @JsonSchema.Description("Film's internal id - use this (not tmdbId) to remove/reorder/edit an already-added film")
+    val id: String,
     val tmdbId: Int,
     val title: String,
     val originalTitle: String? = null,
@@ -24,6 +27,7 @@ data class FilmResponseDto(
     val runtime: Int? = null,
     val genres: List<String>? = null,
     val posterPath: String? = null,
+    val tv: Boolean = false,
     val directors: List<DirectorDto> = emptyList(),
     val sortTitle: String? = null,
     val owned: Boolean = false,
@@ -39,5 +43,5 @@ data class DirectorDto(
 
 @Serializable
 data class ReorderFilmsDto(
-    val filmOrder: List<Int>,
+    val filmOrder: List<String>,
 )

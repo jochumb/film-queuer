@@ -41,19 +41,19 @@ class QueueFilmServiceTest {
             val tmdbId = 550
             val film =
                 Film(
-                    550,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, film.id, Instant.now())
 
             coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
             coEvery { filmRepository.save(any()) } returns film
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, film.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId)
@@ -61,7 +61,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, film.id) }
         }
 
     @Test
@@ -72,19 +72,19 @@ class QueueFilmServiceTest {
             val tmdbId = 550
             val film =
                 Film(
-                    550,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, film.id, Instant.now())
 
             coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
-            coEvery { filmRepository.save(any()) } returns film // replace handles duplicates
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { filmRepository.save(any()) } returns film // insert-if-absent handles duplicates
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, film.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId)
@@ -92,7 +92,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, film.id) }
         }
 
     @Test
@@ -100,16 +100,16 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmRepository.removeFilmFromQueue(queueId, filmTmdbId) } returns true
+            coEvery { queueFilmRepository.removeFilmFromQueue(queueId, filmId) } returns true
 
             // When
-            val result = service.removeFilmFromQueue(queueId, filmTmdbId)
+            val result = service.removeFilmFromQueue(queueId, filmId)
 
             // Then
             assertTrue(result)
-            coVerify { queueFilmRepository.removeFilmFromQueue(queueId, filmTmdbId) }
+            coVerify { queueFilmRepository.removeFilmFromQueue(queueId, filmId) }
         }
 
     @Test
@@ -117,16 +117,16 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmRepository.removeFilmFromQueue(queueId, filmTmdbId) } returns false
+            coEvery { queueFilmRepository.removeFilmFromQueue(queueId, filmId) } returns false
 
             // When
-            val result = service.removeFilmFromQueue(queueId, filmTmdbId)
+            val result = service.removeFilmFromQueue(queueId, filmId)
 
             // Then
             assertFalse(result)
-            coVerify { queueFilmRepository.removeFilmFromQueue(queueId, filmTmdbId) }
+            coVerify { queueFilmRepository.removeFilmFromQueue(queueId, filmId) }
         }
 
     @Test
@@ -137,22 +137,22 @@ class QueueFilmServiceTest {
             val expectedFilms =
                 listOf(
                     Film(
-                        550,
-                        "Fight Club",
-                        "Fight Club",
-                        LocalDate.of(1999, 10, 15),
-                        139,
-                        listOf("Drama", "Thriller"),
-                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                        tmdbId = 550,
+                        title = "Fight Club",
+                        originalTitle = "Fight Club",
+                        releaseDate = LocalDate.of(1999, 10, 15),
+                        runtime = 139,
+                        genres = listOf("Drama", "Thriller"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                     ),
                     Film(
-                        13,
-                        "Forrest Gump",
-                        "Forrest Gump",
-                        LocalDate.of(1994, 7, 6),
-                        142,
-                        listOf("Drama", "Romance"),
-                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                        tmdbId = 13,
+                        title = "Forrest Gump",
+                        originalTitle = "Forrest Gump",
+                        releaseDate = LocalDate.of(1994, 7, 6),
+                        runtime = 142,
+                        genres = listOf("Drama", "Romance"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
                     ),
                 )
 
@@ -187,16 +187,16 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmRepository.isFilmInQueue(queueId, filmTmdbId) } returns true
+            coEvery { queueFilmRepository.isFilmInQueue(queueId, filmId) } returns true
 
             // When
-            val result = service.isFilmInQueue(queueId, filmTmdbId)
+            val result = service.isFilmInQueue(queueId, filmId)
 
             // Then
             assertTrue(result)
-            coVerify { queueFilmRepository.isFilmInQueue(queueId, filmTmdbId) }
+            coVerify { queueFilmRepository.isFilmInQueue(queueId, filmId) }
         }
 
     @Test
@@ -204,16 +204,16 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmRepository.isFilmInQueue(queueId, filmTmdbId) } returns false
+            coEvery { queueFilmRepository.isFilmInQueue(queueId, filmId) } returns false
 
             // When
-            val result = service.isFilmInQueue(queueId, filmTmdbId)
+            val result = service.isFilmInQueue(queueId, filmId)
 
             // Then
             assertFalse(result)
-            coVerify { queueFilmRepository.isFilmInQueue(queueId, filmTmdbId) }
+            coVerify { queueFilmRepository.isFilmInQueue(queueId, filmId) }
         }
 
     @Test
@@ -224,19 +224,19 @@ class QueueFilmServiceTest {
             val tmdbId = 550
             val film =
                 Film(
-                    550,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
             val exception = RuntimeException("Database error")
 
             coEvery { tmdbService.getMovieDetails(tmdbId) } returns mockk(relaxed = true)
             coEvery { filmRepository.save(any()) } returns film
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } throws exception
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, film.id) } throws exception
 
             // When & Then
             try {
@@ -247,7 +247,7 @@ class QueueFilmServiceTest {
             }
 
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, film.id) }
         }
 
     @Test
@@ -255,7 +255,7 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmOrder = listOf(550, 238, 13)
+            val filmOrder = listOf(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
 
             coEvery { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) } returns true
 
@@ -272,7 +272,7 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmOrder = listOf(550, 238)
+            val filmOrder = listOf(UUID.randomUUID(), UUID.randomUUID())
 
             coEvery { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) } returns false
 
@@ -289,7 +289,7 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val emptyOrder = emptyList<Int>()
+            val emptyOrder = emptyList<UUID>()
 
             coEvery { queueFilmRepository.reorderQueueFilms(queueId, emptyOrder) } returns true
 
@@ -306,7 +306,7 @@ class QueueFilmServiceTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmOrder = listOf(550, 238)
+            val filmOrder = listOf(UUID.randomUUID(), UUID.randomUUID())
             val exception = RuntimeException("Database reorder failed")
 
             coEvery { queueFilmRepository.reorderQueueFilms(queueId, filmOrder) } throws exception
@@ -353,16 +353,16 @@ class QueueFilmServiceTest {
             val tmdbId = 1399
             val tvShow =
                 Film(
-                    1399,
-                    "Game of Thrones",
-                    "Game of Thrones",
-                    LocalDate.of(2011, 4, 17),
-                    4560,
-                    listOf("Drama", "Action"),
-                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tmdbId = 1399,
+                    title = "Game of Thrones",
+                    originalTitle = "Game of Thrones",
+                    releaseDate = LocalDate.of(2011, 4, 17),
+                    runtime = 4560,
+                    genres = listOf("Drama", "Action"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
                     tv = true,
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, tvShow.id, Instant.now())
 
             val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
             val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
@@ -391,7 +391,7 @@ class QueueFilmServiceTest {
             coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
             coEvery { tmdbService.getTvSeasonDetails(tmdbId, 2) } returns mockSeasonDetails2
             coEvery { filmRepository.save(any()) } returns tvShow
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
@@ -399,7 +399,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) }
             coVerify { tmdbService.getTvDetails(tmdbId) }
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 2) }
@@ -413,16 +413,16 @@ class QueueFilmServiceTest {
             val tmdbId = 1399
             val tvShow =
                 Film(
-                    1399,
-                    "Game of Thrones",
-                    "Game of Thrones",
-                    LocalDate.of(2011, 4, 17),
-                    null,
-                    listOf("Drama"),
-                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tmdbId = 1399,
+                    title = "Game of Thrones",
+                    originalTitle = "Game of Thrones",
+                    releaseDate = LocalDate.of(2011, 4, 17),
+                    runtime = null,
+                    genres = listOf("Drama"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
                     tv = true,
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, tvShow.id, Instant.now())
 
             val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
             val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
@@ -444,7 +444,7 @@ class QueueFilmServiceTest {
             coEvery { tmdbService.getTvDetails(tmdbId) } returns mockTvDetails
             coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
             coEvery { filmRepository.save(any()) } returns tvShow
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
@@ -452,7 +452,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) }
         }
 
     @Test
@@ -463,16 +463,16 @@ class QueueFilmServiceTest {
             val tmdbId = 1399
             val tvShow =
                 Film(
-                    1399,
-                    "Game of Thrones",
-                    "Game of Thrones",
-                    LocalDate.of(2011, 4, 17),
-                    60,
-                    listOf("Drama"),
-                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tmdbId = 1399,
+                    title = "Game of Thrones",
+                    originalTitle = "Game of Thrones",
+                    releaseDate = LocalDate.of(2011, 4, 17),
+                    runtime = 60,
+                    genres = listOf("Drama"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
                     tv = true,
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, tvShow.id, Instant.now())
 
             val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
             val mockSeason1 = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
@@ -497,7 +497,7 @@ class QueueFilmServiceTest {
             coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
             coEvery { tmdbService.getTvSeasonDetails(tmdbId, 2) } throws RuntimeException("Season not found")
             coEvery { filmRepository.save(any()) } returns tvShow
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
@@ -505,7 +505,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) }
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 2) }
         }
@@ -518,20 +518,15 @@ class QueueFilmServiceTest {
             val tmdbId = 1399
             val fallbackTvShow =
                 Film(
-                    1399,
-                    "Unknown TV Show",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    tmdbId = 1399,
+                    title = "Unknown TV Show",
                     tv = true,
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, fallbackTvShow.id, Instant.now())
 
             coEvery { tmdbService.getTvDetails(tmdbId) } throws RuntimeException("TMDB API error")
             coEvery { filmRepository.save(any()) } returns fallbackTvShow
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, fallbackTvShow.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
@@ -539,7 +534,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, fallbackTvShow.id) }
         }
 
     @Test
@@ -550,16 +545,16 @@ class QueueFilmServiceTest {
             val tmdbId = 1399
             val tvShow =
                 Film(
-                    1399,
-                    "Game of Thrones",
-                    "Game of Thrones",
-                    LocalDate.of(2011, 4, 17),
-                    120,
-                    listOf("Drama"),
-                    "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+                    tmdbId = 1399,
+                    title = "Game of Thrones",
+                    originalTitle = "Game of Thrones",
+                    releaseDate = LocalDate.of(2011, 4, 17),
+                    runtime = 120,
+                    genres = listOf("Drama"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
                     tv = true,
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, tvShow.id, Instant.now())
 
             val mockTvDetails = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbTvDetails>(relaxed = true)
             val mockSpecialsSeason = mockk<me.jochum.filmqueuer.adapters.tmdb.TmdbSeason>(relaxed = true)
@@ -585,7 +580,7 @@ class QueueFilmServiceTest {
             coEvery { tmdbService.getTvDetails(tmdbId) } returns mockTvDetails
             coEvery { tmdbService.getTvSeasonDetails(tmdbId, 1) } returns mockSeasonDetails1
             coEvery { filmRepository.save(any()) } returns tvShow
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) } returns queueFilm
 
             // When
             val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
@@ -593,7 +588,7 @@ class QueueFilmServiceTest {
             // Then
             assertEquals(queueFilm, result)
             coVerify { filmRepository.save(any()) }
-            coVerify { queueFilmRepository.addFilmToQueue(queueId, tmdbId) }
+            coVerify { queueFilmRepository.addFilmToQueue(queueId, tvShow.id) }
             coVerify { tmdbService.getTvSeasonDetails(tmdbId, 1) }
             coVerify(exactly = 0) { tmdbService.getTvSeasonDetails(tmdbId, 0) }
         }
@@ -628,13 +623,14 @@ class QueueFilmServiceTest {
                                 ),
                         ),
                 )
-            val queueFilm = QueueFilm(queueId, tmdbId, Instant.now())
+            val savedFilm = Film(tmdbId = tmdbId, title = "Chernobyl", tv = true, directorTmdbIds = listOf(212408))
+            val queueFilm = QueueFilm(queueId, savedFilm.id, Instant.now())
 
             coEvery { tmdbService.getTvDetails(tmdbId) } returns tvDetails
             coEvery { personRepository.findByTmdbId(212408) } returns null
             coEvery { personRepository.save(any()) } returns mockk()
-            coEvery { filmRepository.save(any()) } returns mockk()
-            coEvery { queueFilmRepository.addFilmToQueue(queueId, tmdbId) } returns queueFilm
+            coEvery { filmRepository.save(any()) } returns savedFilm
+            coEvery { queueFilmRepository.addFilmToQueue(queueId, savedFilm.id) } returns queueFilm
 
             val result = service.addFilmToQueue(queueId, tmdbId, tv = true)
 

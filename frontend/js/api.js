@@ -146,12 +146,30 @@ export const api = {
         });
     },
 
-    async updateFilmSortTitle(tmdbId, sortTitle) {
-        return fetch(`${API_BASE}/films/${tmdbId}/sort-title`, {
+    async updateFilmSortTitle(id, sortTitle) {
+        return fetch(`${API_BASE}/films/${id}/sort-title`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sortTitle }),
         });
+    },
+
+    async importOwnedCollection(csvText) {
+        const response = await fetch(`${API_BASE}/collection/import/letterboxd/owned`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/csv' },
+            body: csvText,
+        });
+        return response;
+    },
+
+    async importWatchedCollection(csvText) {
+        const response = await fetch(`${API_BASE}/collection/import/letterboxd/watched`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/csv' },
+            body: csvText,
+        });
+        return response;
     },
 
     async updateQueueImagePath(queueId, imagePath) {

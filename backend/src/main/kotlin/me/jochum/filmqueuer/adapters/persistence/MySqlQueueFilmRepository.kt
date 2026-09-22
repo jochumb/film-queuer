@@ -17,7 +17,7 @@ import java.util.UUID
 class MySqlQueueFilmRepository : QueueFilmRepository {
     override suspend fun addFilmToQueue(
         queueId: UUID,
-        filmTmdbId: Int,
+        filmId: UUID,
     ): QueueFilm =
         newSuspendedTransaction {
             val addedAt = Instant.now()
@@ -29,20 +29,20 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
 
             QueueFilmTable.insert {
                 it[QueueFilmTable.queueId] = queueId
-                it[QueueFilmTable.filmTmdbId] = filmTmdbId
+                it[QueueFilmTable.filmId] = filmId
                 it[QueueFilmTable.addedAt] = addedAt
                 it[QueueFilmTable.sortOrder] = nextSortOrder
             }
-            QueueFilm(queueId, filmTmdbId, addedAt, nextSortOrder)
+            QueueFilm(queueId, filmId, addedAt, nextSortOrder)
         }
 
     override suspend fun removeFilmFromQueue(
         queueId: UUID,
-        filmTmdbId: Int,
+        filmId: UUID,
     ): Boolean =
         newSuspendedTransaction {
             QueueFilmTable.deleteWhere {
-                (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmTmdbId eq filmTmdbId)
+                (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmId eq filmId)
             } > 0
         }
 
@@ -57,23 +57,23 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
 
     override suspend fun isFilmInQueue(
         queueId: UUID,
-        filmTmdbId: Int,
+        filmId: UUID,
     ): Boolean =
         newSuspendedTransaction {
             QueueFilmTable.selectAll()
-                .where { (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmTmdbId eq filmTmdbId) }
+                .where { (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmId eq filmId) }
                 .count() > 0
         }
 
     override suspend fun reorderQueueFilms(
         queueId: UUID,
-        filmOrder: List<Int>,
+        filmOrder: List<UUID>,
     ): Boolean =
         newSuspendedTransaction {
             // Update sort order for each film in the provided order
-            filmOrder.forEachIndexed { index, filmTmdbId ->
+            filmOrder.forEachIndexed { index, filmId ->
                 QueueFilmTable.update({
-                    (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmTmdbId eq filmTmdbId)
+                    (QueueFilmTable.queueId eq queueId) and (QueueFilmTable.filmId eq filmId)
                 }) {
                     it[sortOrder] = index
                 }
@@ -89,6 +89,7 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
 
     private fun ResultRow.toFilm() =
         Film(
+            id = this[FilmTable.id],
             tmdbId = this[FilmTable.tmdbId],
             title = this[FilmTable.title],
             originalTitle = this[FilmTable.originalTitle],
@@ -96,5 +97,7 @@ class MySqlQueueFilmRepository : QueueFilmRepository {
             runtime = this[FilmTable.runtime],
             genres = this[FilmTable.genres]?.split(", ")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
             posterPath = this[FilmTable.posterPath],
+            tv = this[FilmTable.tv],
+            sortTitle = this[FilmTable.sortTitle],
         )
 }

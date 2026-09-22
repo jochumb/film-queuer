@@ -24,9 +24,9 @@ private suspend fun enrichWithOwnership(
     films: List<FilmResponseDto>,
     externalFilmRefRepository: ExternalFilmRefRepository,
 ): List<FilmResponseDto> {
-    val refsByTmdbId = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.tmdbId }).associateBy { it.filmTmdbId }
+    val refs = externalFilmRefRepository.findByFilmTmdbIds(films.map { it.tmdbId to it.tv })
     return films.map { film ->
-        val ref = refsByTmdbId[film.tmdbId]
+        val ref = refs[film.tmdbId to film.tv]
         film.copy(owned = ref?.owned ?: false, watched = ref?.watched ?: false)
     }
 }
@@ -214,6 +214,7 @@ fun Route.configureQueueRoutes(
                             enrichWithOwnership(
                                 films.map { film ->
                                     FilmResponseDto(
+                                        id = film.id.toString(),
                                         tmdbId = film.tmdbId,
                                         title = film.title,
                                         originalTitle = film.originalTitle,
@@ -221,6 +222,7 @@ fun Route.configureQueueRoutes(
                                         runtime = film.runtime,
                                         genres = film.genres,
                                         posterPath = film.posterPath,
+                                        tv = film.tv,
                                     )
                                 },
                                 externalFilmRefRepository,
@@ -238,22 +240,22 @@ fun Route.configureQueueRoutes(
         /**
          * Tag: Queues
          * Description: Remove a film from a queue.
-         * Path: filmTmdbId [Int] TMDB film ID
+         * Path: filmId [UUID] Film's internal id (from the film's `id` field, not its TMDB id)
          */
-        delete("/{queueId}/films/{filmTmdbId}") {
+        delete("/{queueId}/films/{filmId}") {
             try {
                 val queueIdString = call.parameters["queueId"]
-                val filmTmdbIdString = call.parameters["filmTmdbId"]
+                val filmIdString = call.parameters["filmId"]
 
-                if (queueIdString == null || filmTmdbIdString == null) {
-                    call.respond(HttpStatusCode.BadRequest, "Queue ID and Film TMDB ID are required")
+                if (queueIdString == null || filmIdString == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Queue ID and film ID are required")
                     return@delete
                 }
 
                 val queueId = UUID.fromString(queueIdString)
-                val filmTmdbId = filmTmdbIdString.toInt()
+                val filmId = UUID.fromString(filmIdString)
 
-                val removed = queueFilmService.removeFilmFromQueue(queueId, filmTmdbId)
+                val removed = queueFilmService.removeFilmFromQueue(queueId, filmId)
 
                 if (removed) {
                     call.respond(HttpStatusCode.OK, "Film removed from queue successfully")
@@ -261,9 +263,7 @@ fun Route.configureQueueRoutes(
                     call.respond(HttpStatusCode.NotFound, "Film not found in queue")
                 }
             } catch (e: IllegalArgumentException) {
-                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID or film TMDB ID: ${e.message}")
-            } catch (e: NumberFormatException) {
-                call.respond(HttpStatusCode.BadRequest, "Invalid film TMDB ID format: ${e.message}")
+                call.respond(HttpStatusCode.BadRequest, "Invalid queue ID or film ID: ${e.message}")
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, "Failed to remove film from queue: ${e.message}")
             }
@@ -283,8 +283,9 @@ fun Route.configureQueueRoutes(
 
                 val queueId = UUID.fromString(queueIdString)
                 val reorderRequest = call.receive<ReorderFilmsDto>()
+                val filmOrder = reorderRequest.filmOrder.map { UUID.fromString(it) }
 
-                val success = queueFilmService.reorderQueueFilms(queueId, reorderRequest.filmOrder)
+                val success = queueFilmService.reorderQueueFilms(queueId, filmOrder)
 
                 if (success) {
                     call.respond(HttpStatusCode.OK, "Films reordered successfully")
@@ -346,6 +347,7 @@ fun Route.configureQueueRoutes(
                             enrichWithOwnership(
                                 films.map { film ->
                                     FilmResponseDto(
+                                        id = film.id.toString(),
                                         tmdbId = film.tmdbId,
                                         title = film.title,
                                         originalTitle = film.originalTitle,
@@ -353,6 +355,7 @@ fun Route.configureQueueRoutes(
                                         runtime = film.runtime,
                                         genres = film.genres,
                                         posterPath = film.posterPath,
+                                        tv = film.tv,
                                     )
                                 },
                                 externalFilmRefRepository,

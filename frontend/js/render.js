@@ -28,6 +28,13 @@ export function runtimeLabel(minutes) {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// Movie and TV TMDB ids are separate namespaces and can collide on the same number, so
+// "already queued" tracking (which only has a raw tmdbId + tv from search/filmography results,
+// not yet a film's internal id) must key on the pair, not the bare tmdbId.
+export function filmKey(tmdbId, tv) {
+    return `${tmdbId}:${tv ? 1 : 0}`;
+}
+
 export function esc(str) {
     return String(str ?? '')
         .replace(/&/g, '&amp;')
@@ -136,7 +143,7 @@ function miniFilmCell(f, index, watchedQueueId) {
                     ${f.posterPath ? `<img src="${f.posterPath}" alt="${esc(f.title)}">` : '<span class="placeholder">🎬</span>'}
                     ${watchedQueueId ? `
                         <button class="mft-watched-btn" title="Mark as watched"
-                            data-watched-queue="${watchedQueueId}" data-watched-film="${f.tmdbId}" data-watched-title="${esc(f.title)}">
+                            data-watched-queue="${watchedQueueId}" data-watched-film="${f.id}" data-watched-title="${esc(f.title)}">
                             <i data-feather="check"></i>
                         </button>
                     ` : ''}
@@ -361,14 +368,14 @@ export function renderQueueFilms(films) {
         return `<div class="empty-queue">No films in this queue yet.<div class="empty-sub">Browse and add films from the right panel.</div></div>`;
     }
     return films.map((f) => `
-        <div class="queue-film-row" data-drag-id="${f.tmdbId}">
+        <div class="queue-film-row" data-drag-id="${f.id}">
             <div class="qf-poster">${f.posterPath ? `<img src="${f.posterPath}" alt="${esc(f.title)}">` : ''}</div>
             <div class="qf-info">
                 <p class="qf-title">${esc(f.title)}</p>
                 <span class="qf-sub">${yearOf(f.releaseDate)}${f.runtime ? ` &middot; ${f.runtime}m` : ''}</span>
                 ${ownershipBadges(f)}
             </div>
-            <button class="btn btn-icon remove-film-btn" data-id="${f.tmdbId}" data-title="${esc(f.title)}" title="Remove">
+            <button class="btn btn-icon remove-film-btn" data-id="${f.id}" data-title="${esc(f.title)}" title="Remove">
                 <i data-feather="trash-2"></i>
             </button>
         </div>
@@ -380,7 +387,7 @@ export function renderFilmGrid(films, queuedFilmIds, options = {}) {
         return options.emptyMessage ? `<p class="muted-text">${options.emptyMessage}</p>` : '';
     }
     return films.map((film) => {
-        const isQueued = queuedFilmIds.has(film.id);
+        const isQueued = queuedFilmIds.has(filmKey(film.id, film.tv));
         return `
             <div class="film-tile ${isQueued ? 'in-queue' : ''}">
                 <div class="film-tile-poster">
@@ -409,6 +416,12 @@ export function renderCollectionShell() {
             <div class="page-header">
                 <h1>Collection</h1>
                 <span class="subtitle" id="collectionSubtitle">Films from your Letterboxd exports</span>
+                <div class="collection-upload-actions">
+                    <input type="file" id="ownedCsvInput" accept=".csv,text/csv" hidden>
+                    <button class="btn btn-sm" id="uploadOwnedCsvBtn">Upload owned CSV</button>
+                    <input type="file" id="watchedCsvInput" accept=".csv,text/csv" hidden>
+                    <button class="btn btn-sm" id="uploadWatchedCsvBtn">Upload watched CSV</button>
+                </div>
             </div>
             <div class="panel collection-panel">
                 <div class="collection-controls">
@@ -486,7 +499,7 @@ export function renderCollectionRows(items) {
             ? directors.map((d) => `<span class="director-name" data-edit-sort-name data-director-id="${d.tmdbId}" data-director-name="${esc(d.name)}" data-director-sort-name="${esc(d.sortName)}" title="Click to fix sort order">${esc(d.name)}</span>`).join(', ')
             : '<span class="muted-text">—</span>';
         const titleHtml = matched && item.film
-            ? `<span class="editable-title" data-edit-sort-title data-title-id="${item.film.tmdbId}" data-title-name="${esc(displayTitle)}" data-title-sort="${esc(item.film.sortTitle || displayTitle)}" title="Click to fix sort order">${esc(displayTitle)}</span>`
+            ? `<span class="editable-title" data-edit-sort-title data-title-id="${item.film.id}" data-title-name="${esc(displayTitle)}" data-title-sort="${esc(item.film.sortTitle || displayTitle)}" title="Click to fix sort order">${esc(displayTitle)}</span>`
             : esc(displayTitle);
         const unmatchedIcon = matched ? '' : '<span class="unmatched-icon" title="Unmatched — use Fix match to link this film">⚠</span> ';
         return `
@@ -500,7 +513,7 @@ export function renderCollectionRows(items) {
                 <td class="ct-year">${displayYear}</td>
                 <td class="ct-director">${directorHtml}</td>
                 <td class="ct-actions">
-                    <button class="btn btn-sm add-to-queue-btn" data-tmdb-id="${item.filmTmdbId ?? ''}" data-title="${esc(displayTitle)}" ${matched ? '' : 'disabled'}>
+                    <button class="btn btn-sm add-to-queue-btn" data-tmdb-id="${item.filmTmdbId ?? ''}" data-tv="${matched && item.film?.tv ? '1' : '0'}" data-title="${esc(displayTitle)}" ${matched ? '' : 'disabled'}>
                         Add to queue
                     </button>
                     <div class="row-menu">

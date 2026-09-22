@@ -16,9 +16,16 @@ class FilmEnrichmentService(
         val allFilms = filmRepository.findAll()
         val filmsToEnrich =
             allFilms.filter { film ->
-                film.runtime == null ||
-                    film.genres.isNullOrEmpty() ||
-                    film.posterPath.isNullOrBlank()
+                // TV shows are skipped here: this only knows how to call the movie-details
+                // endpoint, and calling it with a TV show's tmdbId can - since movie and TV ids
+                // are separate namespaces - resolve to a *different*, unrelated movie that
+                // happens to share that number, corrupting the TV row with its data.
+                !film.tv &&
+                    (
+                        film.runtime == null ||
+                            film.genres.isNullOrEmpty() ||
+                            film.posterPath.isNullOrBlank()
+                    )
             }
 
         if (filmsToEnrich.isEmpty()) {

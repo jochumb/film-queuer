@@ -40,7 +40,7 @@ class FilmControllerTest {
         tmdbService = mockk()
         filmRepository = mockk()
         externalFilmRefRepository = mockk()
-        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyList()
+        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyMap()
     }
 
     @Test
@@ -130,18 +130,19 @@ class FilmControllerTest {
                     totalResults = 1,
                     results = listOf(TmdbMovie(id = 550, title = "Fight Club")),
                 )
-            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550)) } returns
-                listOf(
-                    ExternalFilmRef(
-                        id = UUID.randomUUID(),
-                        source = "LETTERBOXD",
-                        title = "Fight Club",
-                        year = 1999,
-                        filmTmdbId = 550,
-                        owned = true,
-                        watched = true,
-                        createdAt = Instant.now(),
-                    ),
+            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550 to false)) } returns
+                mapOf(
+                    (550 to false) to
+                        ExternalFilmRef(
+                            id = UUID.randomUUID(),
+                            source = "LETTERBOXD",
+                            title = "Fight Club",
+                            year = 1999,
+                            filmId = UUID.randomUUID(),
+                            owned = true,
+                            watched = true,
+                            createdAt = Instant.now(),
+                        ),
                 )
 
             val response = client.get("/films/search?q=Fight Club")
@@ -379,16 +380,17 @@ class FilmControllerTest {
                 configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
-            coEvery { filmRepository.updateSortTitle(550, "Godfather, The") } returns true
+            val filmId = UUID.randomUUID()
+            coEvery { filmRepository.updateSortTitle(filmId, "Godfather, The") } returns true
 
             val response =
-                client.put("/films/550/sort-title") {
+                client.put("/films/$filmId/sort-title") {
                     contentType(ContentType.Application.Json)
                     setBody("""{"sortTitle": "Godfather, The"}""")
                 }
 
             assertEquals(HttpStatusCode.OK, response.status)
-            coVerify { filmRepository.updateSortTitle(550, "Godfather, The") }
+            coVerify { filmRepository.updateSortTitle(filmId, "Godfather, The") }
         }
 
     @Test
@@ -402,15 +404,37 @@ class FilmControllerTest {
                 configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
             }
 
-            coEvery { filmRepository.updateSortTitle(999, "Anything") } returns false
+            val filmId = UUID.randomUUID()
+            coEvery { filmRepository.updateSortTitle(filmId, "Anything") } returns false
 
             val response =
-                client.put("/films/999/sort-title") {
+                client.put("/films/$filmId/sort-title") {
                     contentType(ContentType.Application.Json)
                     setBody("""{"sortTitle": "Anything"}""")
                 }
 
             assertEquals(HttpStatusCode.NotFound, response.status)
+        }
+
+    @Test
+    fun `PUT films sort-title should return bad request for a non-UUID id`() =
+        testApplication {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+
+            routing {
+                configureFilmRoutes(tmdbService, filmRepository, externalFilmRefRepository)
+            }
+
+            val response =
+                client.put("/films/not-a-uuid/sort-title") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"sortTitle": "Anything"}""")
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            coVerify(exactly = 0) { filmRepository.updateSortTitle(any(), any()) }
         }
 
     @Test
@@ -425,7 +449,7 @@ class FilmControllerTest {
             }
 
             val response =
-                client.put("/films/550/sort-title") {
+                client.put("/films/${UUID.randomUUID()}/sort-title") {
                     contentType(ContentType.Application.Json)
                     setBody("""{"sortTitle": "   "}""")
                 }

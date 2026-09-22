@@ -5,24 +5,24 @@ import java.util.UUID
 interface QueueFilmRepository {
     suspend fun addFilmToQueue(
         queueId: UUID,
-        filmTmdbId: Int,
+        filmId: UUID,
     ): QueueFilm
 
     suspend fun removeFilmFromQueue(
         queueId: UUID,
-        filmTmdbId: Int,
+        filmId: UUID,
     ): Boolean
 
     suspend fun findFilmsByQueueId(queueId: UUID): List<Film>
 
     suspend fun isFilmInQueue(
         queueId: UUID,
-        filmTmdbId: Int,
+        filmId: UUID,
     ): Boolean
 
     suspend fun reorderQueueFilms(
         queueId: UUID,
-        filmOrder: List<Int>,
+        filmOrder: List<UUID>,
     ): Boolean
 
     suspend fun deleteAllForQueue(queueId: UUID): Boolean

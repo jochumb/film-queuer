@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -56,12 +57,13 @@ class MySqlFilmRepositoryTest {
             val result = repository.save(film)
 
             // Then - save() fills in the default sort title ("Fight Club" has no leading
-            // article, so it's unchanged) since none was given
+            // article, so it's unchanged) since none was given. This is a fresh insert, so the
+            // stored id matches the id the Film was constructed with.
             val expected = film.copy(sortTitle = "Fight Club")
             assertEquals(expected, result)
 
             // Verify it was saved with detailed field validation
-            val found = repository.findByTmdbId(550)
+            val found = repository.findByTmdbId(550, false)
             assertNotNull(found)
             assertEquals(expected, found)
 
@@ -73,6 +75,7 @@ class MySqlFilmRepositoryTest {
             assertEquals(139, found.runtime)
             assertEquals(listOf("Drama", "Thriller"), found.genres)
             assertEquals("https://image.tmdb.org/t/p/w500/path.jpg", found.posterPath)
+            assertFalse(found.tv)
         }
 
     @Test
@@ -81,32 +84,35 @@ class MySqlFilmRepositoryTest {
             // Given
             val film1 =
                 Film(
-                    550,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
-                )
-            val film2 =
-                Film(
-                    550,
-                    "Updated Title",
-                    "Updated Original Title",
-                    LocalDate.of(2000, 1, 1),
-                    120,
-                    listOf("Action", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/updated.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
 
             // When
-            repository.save(film1) // Insert original film
+            val saved1 = repository.save(film1) // Insert original film
+            // update() is keyed by id (not tmdbId), so the replacement film must carry the
+            // existing row's id - as a caller would after looking it up via findByTmdbId.
+            val film2 =
+                Film(
+                    id = saved1.id,
+                    tmdbId = 550,
+                    title = "Updated Title",
+                    originalTitle = "Updated Original Title",
+                    releaseDate = LocalDate.of(2000, 1, 1),
+                    runtime = 120,
+                    genres = listOf("Action", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/updated.jpg",
+                )
             val updated = repository.update(film2) // Update existing film
 
             // Then
             assertTrue(updated) // Should return true indicating successful update
-            val found = repository.findByTmdbId(550)
+            val found = repository.findByTmdbId(550, false)
             assertNotNull(found)
 
             // Validate all updated fields
@@ -124,15 +130,15 @@ class MySqlFilmRepositoryTest {
     @Test
     fun `update should return false when film does not exist`() =
         runBlocking {
-            // Given
-            val film = Film(999, "Non-existent Film", null, LocalDate.of(2023, 1, 1), null, null, null)
+            // Given - a freshly-constructed Film gets its own random id, which won't match any row
+            val film = Film(tmdbId = 999, title = "Non-existent Film", releaseDate = LocalDate.of(2023, 1, 1))
 
             // When
             val updated = repository.update(film)
 
             // Then
             assertFalse(updated) // Should return false indicating no update occurred
-            val found = repository.findByTmdbId(999)
+            val found = repository.findByTmdbId(999, false)
             assertNull(found) // Film should still not exist
         }
 
@@ -140,11 +146,11 @@ class MySqlFilmRepositoryTest {
     fun `findByTmdbId should return film when exists`() =
         runBlocking {
             // Given
-            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15), null, null, null)
+            val film = Film(tmdbId = 550, title = "Fight Club", releaseDate = LocalDate.of(1999, 10, 15))
             repository.save(film)
 
             // When
-            val result = repository.findByTmdbId(550)
+            val result = repository.findByTmdbId(550, false)
 
             // Then
             assertNotNull(result)
@@ -155,7 +161,7 @@ class MySqlFilmRepositoryTest {
     fun `findByTmdbId should return null when not exists`() =
         runBlocking {
             // When
-            val result = repository.findByTmdbId(999)
+            val result = repository.findByTmdbId(999, false)
 
             // Then
             assertNull(result)
@@ -168,31 +174,31 @@ class MySqlFilmRepositoryTest {
             val films =
                 listOf(
                     Film(
-                        550,
-                        "Fight Club",
-                        "Fight Club",
-                        LocalDate.of(1999, 10, 15),
-                        139,
-                        listOf("Drama", "Thriller"),
-                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                        tmdbId = 550,
+                        title = "Fight Club",
+                        originalTitle = "Fight Club",
+                        releaseDate = LocalDate.of(1999, 10, 15),
+                        runtime = 139,
+                        genres = listOf("Drama", "Thriller"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                     ),
                     Film(
-                        13,
-                        "Forrest Gump",
-                        "Forrest Gump",
-                        LocalDate.of(1994, 7, 6),
-                        142,
-                        listOf("Drama", "Romance"),
-                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                        tmdbId = 13,
+                        title = "Forrest Gump",
+                        originalTitle = "Forrest Gump",
+                        releaseDate = LocalDate.of(1994, 7, 6),
+                        runtime = 142,
+                        genres = listOf("Drama", "Romance"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
                     ),
                     Film(
-                        238,
-                        "The Godfather",
-                        "The Godfather",
-                        LocalDate.of(1972, 3, 14),
-                        175,
-                        listOf("Crime", "Drama"),
-                        "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                        tmdbId = 238,
+                        title = "The Godfather",
+                        originalTitle = "The Godfather",
+                        releaseDate = LocalDate.of(1972, 3, 14),
+                        runtime = 175,
+                        genres = listOf("Crime", "Drama"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
                     ),
                 )
             films.forEach { repository.save(it) }
@@ -236,7 +242,7 @@ class MySqlFilmRepositoryTest {
             // Then
             assertEquals(film.copy(sortTitle = "Fight Club"), result)
 
-            val found = repository.findByTmdbId(550)
+            val found = repository.findByTmdbId(550, false)
             assertNotNull(found)
             assertNull(found.originalTitle)
             assertNull(found.releaseDate)
@@ -250,28 +256,57 @@ class MySqlFilmRepositoryTest {
         runBlocking {
             // Given
             val film = Film(tmdbId = 550, title = "The Godfather")
-            repository.save(film) // default sortTitle becomes "Godfather"
+            val saved = repository.save(film) // default sortTitle becomes "Godfather"
 
-            // When
-            val updated = repository.updateSortTitle(550, "Godfather, The")
+            // When - updateSortTitle is keyed by the film's real id, not its tmdbId
+            val updated = repository.updateSortTitle(saved.id, "Godfather, The")
 
             // Then
             assertTrue(updated)
-            assertEquals("Godfather, The", repository.findByTmdbId(550)?.sortTitle)
+            assertEquals("Godfather, The", repository.findByTmdbId(550, false)?.sortTitle)
 
             // And a later re-save (e.g. this film being added to another queue) must not
             // clobber the manual correction
             repository.save(film)
-            assertEquals("Godfather, The", repository.findByTmdbId(550)?.sortTitle)
+            assertEquals("Godfather, The", repository.findByTmdbId(550, false)?.sortTitle)
         }
 
     @Test
     fun `updateSortTitle should return false when film does not exist`() =
         runBlocking {
             // When
-            val updated = repository.updateSortTitle(999, "Nothing")
+            val updated = repository.updateSortTitle(UUID.randomUUID(), "Nothing")
 
             // Then
             assertFalse(updated)
+        }
+
+    @Test
+    fun `save should keep a movie and a TV show sharing the same tmdbId as two independent rows`() =
+        runBlocking {
+            // Given - TMDB movie and TV ids are separate namespaces and can collide on the same
+            // number (e.g. movie 206647 "Spectre" and TV show 206647 "Histoire(s) du cinema").
+            // Before the UUID-id fix, films were keyed on bare tmdbId, so saving the second one
+            // would silently collide with (and could overwrite) the first.
+            val movie = Film(tmdbId = 206647, title = "Spectre", tv = false)
+            val tvShow = Film(tmdbId = 206647, title = "Histoire(s) du cinema", tv = true)
+
+            // When
+            val savedMovie = repository.save(movie)
+            val savedTvShow = repository.save(tvShow)
+
+            // Then - two distinct rows, each with correct title/tv flag, not a collision
+            assertTrue(savedMovie.id != savedTvShow.id)
+            assertEquals(2, repository.findAll().size)
+
+            val foundMovie = repository.findByTmdbId(206647, false)
+            val foundTvShow = repository.findByTmdbId(206647, true)
+
+            assertNotNull(foundMovie)
+            assertNotNull(foundTvShow)
+            assertEquals("Spectre", foundMovie.title)
+            assertFalse(foundMovie.tv)
+            assertEquals("Histoire(s) du cinema", foundTvShow.title)
+            assertTrue(foundTvShow.tv)
         }
 }

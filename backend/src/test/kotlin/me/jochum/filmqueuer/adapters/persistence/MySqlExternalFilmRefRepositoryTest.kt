@@ -47,14 +47,14 @@ class MySqlExternalFilmRefRepositoryTest {
         year: Int? = 1999,
         owned: Boolean = true,
         watched: Boolean = false,
-        filmTmdbId: Int? = null,
+        filmId: UUID? = null,
         removed: Boolean = false,
     ) = ExternalFilmRef(
         id = UUID.randomUUID(),
         source = "LETTERBOXD",
         title = title,
         year = year,
-        filmTmdbId = filmTmdbId,
+        filmId = filmId,
         owned = owned,
         watched = watched,
         createdAt = Instant.now(),
@@ -101,13 +101,13 @@ class MySqlExternalFilmRefRepositoryTest {
         }
 
     @Test
-    fun `update should change owned, watched and filmTmdbId`() =
+    fun `update should change owned, watched and filmId`() =
         runBlocking {
             val ref = testRef(owned = true, watched = false)
             repository.save(ref)
-            MySqlFilmRepository().save(Film(tmdbId = 550, title = "Fight Club"))
+            val savedFilm = MySqlFilmRepository().save(Film(tmdbId = 550, title = "Fight Club"))
 
-            val updated = ref.copy(owned = true, watched = true, filmTmdbId = 550)
+            val updated = ref.copy(owned = true, watched = true, filmId = savedFilm.id)
             val result = repository.update(updated)
 
             assertTrue(result)
@@ -203,11 +203,11 @@ class MySqlExternalFilmRefRepositoryTest {
             // By raw title, "Se7en" < "The Godfather" (S < T). By sort title, "Godfather" (the
             // leading "The" is stripped) < "Se7en" (G < S) - this only distinguishes the two.
             val filmRepository = MySqlFilmRepository()
-            filmRepository.save(Film(tmdbId = 238, title = "The Godfather"))
-            filmRepository.save(Film(tmdbId = 550, title = "Se7en"))
+            val godfather = filmRepository.save(Film(tmdbId = 238, title = "The Godfather"))
+            val se7en = filmRepository.save(Film(tmdbId = 550, title = "Se7en"))
 
-            repository.save(testRef(title = "The Godfather", filmTmdbId = 238))
-            repository.save(testRef(title = "Se7en", year = 1995, filmTmdbId = 550))
+            repository.save(testRef(title = "The Godfather", filmId = godfather.id))
+            repository.save(testRef(title = "Se7en", year = 1995, filmId = se7en.id))
 
             val page =
                 repository.findPage(
@@ -250,11 +250,11 @@ class MySqlExternalFilmRefRepositoryTest {
             val personRepository = MySqlPersonRepository()
             personRepository.save(Person(tmdbId = 1, name = "Zack Snyder", department = Department.DIRECTING))
             personRepository.save(Person(tmdbId = 2, name = "Ang Lee", department = Department.DIRECTING))
-            filmRepository.save(Film(tmdbId = 550, title = "Snyder Film", directorTmdbIds = listOf(1)))
-            filmRepository.save(Film(tmdbId = 551, title = "Lee Film", directorTmdbIds = listOf(2)))
+            val snyderFilm = filmRepository.save(Film(tmdbId = 550, title = "Snyder Film", directorTmdbIds = listOf(1)))
+            val leeFilm = filmRepository.save(Film(tmdbId = 551, title = "Lee Film", directorTmdbIds = listOf(2)))
 
-            repository.save(testRef(title = "Snyder Film", filmTmdbId = 550))
-            repository.save(testRef(title = "Lee Film", year = 2001, filmTmdbId = 551))
+            repository.save(testRef(title = "Snyder Film", filmId = snyderFilm.id))
+            repository.save(testRef(title = "Lee Film", year = 2001, filmId = leeFilm.id))
 
             val page =
                 repository.findPage(
@@ -279,11 +279,11 @@ class MySqlExternalFilmRefRepositoryTest {
             val personRepository = MySqlPersonRepository()
             personRepository.save(Person(tmdbId = 1, name = "Alfred Hitchcock", department = Department.DIRECTING))
             personRepository.save(Person(tmdbId = 2, name = "Woody Allen", department = Department.DIRECTING))
-            filmRepository.save(Film(tmdbId = 550, title = "Hitchcock Film", directorTmdbIds = listOf(1)))
-            filmRepository.save(Film(tmdbId = 551, title = "Allen Film", directorTmdbIds = listOf(2)))
+            val hitchcockFilm = filmRepository.save(Film(tmdbId = 550, title = "Hitchcock Film", directorTmdbIds = listOf(1)))
+            val allenFilm = filmRepository.save(Film(tmdbId = 551, title = "Allen Film", directorTmdbIds = listOf(2)))
 
-            repository.save(testRef(title = "Hitchcock Film", filmTmdbId = 550))
-            repository.save(testRef(title = "Allen Film", year = 2001, filmTmdbId = 551))
+            repository.save(testRef(title = "Hitchcock Film", filmId = hitchcockFilm.id))
+            repository.save(testRef(title = "Allen Film", year = 2001, filmId = allenFilm.id))
 
             val page =
                 repository.findPage(
@@ -308,16 +308,16 @@ class MySqlExternalFilmRefRepositoryTest {
 
             // Same director throughout: "Zzz" sorts after "Aaa" by title but comes first because
             // its year (1993) is earlier - proving year is checked before title within a director.
-            filmRepository.save(Film(tmdbId = 1, title = "Zzz Later Title", directorTmdbIds = listOf(1)))
-            filmRepository.save(Film(tmdbId = 2, title = "Aaa Earlier Title", directorTmdbIds = listOf(1)))
+            val zzzFilm = filmRepository.save(Film(tmdbId = 1, title = "Zzz Later Title", directorTmdbIds = listOf(1)))
+            val aaaFilm = filmRepository.save(Film(tmdbId = 2, title = "Aaa Earlier Title", directorTmdbIds = listOf(1)))
             // Same director and same year: title breaks the tie.
-            filmRepository.save(Film(tmdbId = 3, title = "Beta", directorTmdbIds = listOf(1)))
-            filmRepository.save(Film(tmdbId = 4, title = "Alpha", directorTmdbIds = listOf(1)))
+            val betaFilm = filmRepository.save(Film(tmdbId = 3, title = "Beta", directorTmdbIds = listOf(1)))
+            val alphaFilm = filmRepository.save(Film(tmdbId = 4, title = "Alpha", directorTmdbIds = listOf(1)))
 
-            repository.save(testRef(title = "Zzz Later Title", year = 1993, filmTmdbId = 1))
-            repository.save(testRef(title = "Aaa Earlier Title", year = 1975, filmTmdbId = 2))
-            repository.save(testRef(title = "Beta", year = 2000, filmTmdbId = 3))
-            repository.save(testRef(title = "Alpha", year = 2000, filmTmdbId = 4))
+            repository.save(testRef(title = "Zzz Later Title", year = 1993, filmId = zzzFilm.id))
+            repository.save(testRef(title = "Aaa Earlier Title", year = 1975, filmId = aaaFilm.id))
+            repository.save(testRef(title = "Beta", year = 2000, filmId = betaFilm.id))
+            repository.save(testRef(title = "Alpha", year = 2000, filmId = alphaFilm.id))
 
             val page =
                 repository.findPage(
@@ -340,9 +340,9 @@ class MySqlExternalFilmRefRepositoryTest {
     fun `findPage should filter by owned, watched and unmatched`() =
         runBlocking {
             val filmRepository = MySqlFilmRepository()
-            filmRepository.save(Film(tmdbId = 550, title = "Fight Club"))
+            val savedFilm = filmRepository.save(Film(tmdbId = 550, title = "Fight Club"))
 
-            repository.save(testRef(title = "Owned Matched", owned = true, watched = false, filmTmdbId = 550))
+            repository.save(testRef(title = "Owned Matched", owned = true, watched = false, filmId = savedFilm.id))
             repository.save(testRef(title = "Watched Unmatched", year = 2001, owned = false, watched = true))
 
             val ownedOnly =
@@ -390,10 +390,10 @@ class MySqlExternalFilmRefRepositoryTest {
             // a search for "days" should still find it via the imported title, and a search for
             // the (wrong) matched title should also find it, since either can be what the user
             // remembers.
-            filmRepository.save(Film(tmdbId = 1, title = "365 Days"))
-            filmRepository.save(Film(tmdbId = 2, title = "Fight Club"))
-            repository.save(testRef(title = "Days", filmTmdbId = 1))
-            repository.save(testRef(title = "Fight Club", year = 1999, filmTmdbId = 2))
+            val daysFilm = filmRepository.save(Film(tmdbId = 1, title = "365 Days"))
+            val fightClubFilm = filmRepository.save(Film(tmdbId = 2, title = "Fight Club"))
+            repository.save(testRef(title = "Days", filmId = daysFilm.id))
+            repository.save(testRef(title = "Fight Club", year = 1999, filmId = fightClubFilm.id))
 
             val byImportedTitle =
                 repository.findPage(
@@ -494,61 +494,48 @@ class MySqlExternalFilmRefRepositoryTest {
         }
 
     @Test
-    fun `findByFilmTmdbId should return the linked ref`() =
+    fun `findByFilmTmdbIds should batch-return refs for the given (tmdbId, tv) pairs, excluding removed and unrequested ones`() =
         runBlocking {
             val filmRepository = MySqlFilmRepository()
-            filmRepository.save(Film(tmdbId = 550, title = "Fight Club"))
-            val ref = testRef(filmTmdbId = 550)
-            repository.save(ref)
+            val fightClubFilm = filmRepository.save(Film(tmdbId = 550, title = "Fight Club"))
+            val se7enFilm = filmRepository.save(Film(tmdbId = 551, title = "Se7en"))
+            val otherFilm = filmRepository.save(Film(tmdbId = 552, title = "Other Film"))
+            val hiddenFilm = filmRepository.save(Film(tmdbId = 553, title = "Hidden Film"))
 
-            val found = repository.findByFilmTmdbId(550)
-
-            assertEquals(ref, found)
-        }
-
-    @Test
-    fun `findByFilmTmdbIds should batch-return refs for the given tmdb ids, excluding removed and unrequested ones`() =
-        runBlocking {
-            val filmRepository = MySqlFilmRepository()
-            filmRepository.save(Film(tmdbId = 550, title = "Fight Club"))
-            filmRepository.save(Film(tmdbId = 551, title = "Se7en"))
-            filmRepository.save(Film(tmdbId = 552, title = "Other Film"))
-            filmRepository.save(Film(tmdbId = 553, title = "Hidden Film"))
-
-            val fightClub = testRef(title = "Fight Club", filmTmdbId = 550)
-            val se7en = testRef(title = "Se7en", year = 1995, filmTmdbId = 551)
-            val other = testRef(title = "Other Film", year = 2000, filmTmdbId = 552)
-            val hidden = testRef(title = "Hidden Film", year = 2001, filmTmdbId = 553, removed = true)
+            val fightClub = testRef(title = "Fight Club", filmId = fightClubFilm.id)
+            val se7en = testRef(title = "Se7en", year = 1995, filmId = se7enFilm.id)
+            val other = testRef(title = "Other Film", year = 2000, filmId = otherFilm.id)
+            val hidden = testRef(title = "Hidden Film", year = 2001, filmId = hiddenFilm.id, removed = true)
             repository.save(fightClub)
             repository.save(se7en)
             repository.save(other)
             repository.save(hidden)
 
-            val found = repository.findByFilmTmdbIds(listOf(550, 551, 553))
+            val found = repository.findByFilmTmdbIds(listOf(550 to false, 551 to false, 553 to false))
 
-            assertEquals(setOf(fightClub, se7en), found.toSet())
+            assertEquals(mapOf((550 to false) to fightClub, (551 to false) to se7en), found)
         }
 
     @Test
-    fun `findByFilmTmdbIds should return an empty list for an empty input`() =
+    fun `findByFilmTmdbIds should return an empty map for an empty input`() =
         runBlocking {
-            assertEquals(emptyList(), repository.findByFilmTmdbIds(emptyList()))
+            assertEquals(emptyMap(), repository.findByFilmTmdbIds(emptyList()))
         }
 
     @Test
     fun `findRandomPicks should only return owned, unwatched, matched refs under the runtime cap`() =
         runBlocking {
             val filmRepository = MySqlFilmRepository()
-            filmRepository.save(Film(tmdbId = 1, title = "Short Owned Unwatched", runtime = 90))
-            filmRepository.save(Film(tmdbId = 2, title = "Too Long", runtime = 150))
-            filmRepository.save(Film(tmdbId = 3, title = "No Runtime Data", runtime = null))
+            val shortFilm = filmRepository.save(Film(tmdbId = 1, title = "Short Owned Unwatched", runtime = 90))
+            val longFilm = filmRepository.save(Film(tmdbId = 2, title = "Too Long", runtime = 150))
+            val noRuntimeFilm = filmRepository.save(Film(tmdbId = 3, title = "No Runtime Data", runtime = null))
 
-            repository.save(testRef(title = "Short Owned Unwatched", filmTmdbId = 1, owned = true, watched = false))
-            repository.save(testRef(title = "Too Long", year = 2000, filmTmdbId = 2, owned = true, watched = false))
-            repository.save(testRef(title = "No Runtime Data", year = 2001, filmTmdbId = 3, owned = true, watched = false))
+            repository.save(testRef(title = "Short Owned Unwatched", filmId = shortFilm.id, owned = true, watched = false))
+            repository.save(testRef(title = "Too Long", year = 2000, filmId = longFilm.id, owned = true, watched = false))
+            repository.save(testRef(title = "No Runtime Data", year = 2001, filmId = noRuntimeFilm.id, owned = true, watched = false))
             repository.save(testRef(title = "Owned But Watched", year = 2002, owned = true, watched = true))
             repository.save(testRef(title = "Not Owned", year = 2003, owned = false, watched = false))
-            repository.save(testRef(title = "Unmatched", year = 2004, owned = true, watched = false, filmTmdbId = null))
+            repository.save(testRef(title = "Unmatched", year = 2004, owned = true, watched = false, filmId = null))
             val removedRef = testRef(title = "Removed", year = 2005, owned = true, watched = false)
             repository.save(removedRef)
             repository.setRemoved(removedRef.id, true)
@@ -563,8 +550,8 @@ class MySqlExternalFilmRefRepositoryTest {
         runBlocking {
             val filmRepository = MySqlFilmRepository()
             repeat(5) { i ->
-                filmRepository.save(Film(tmdbId = 100 + i, title = "Film $i", runtime = 90))
-                repository.save(testRef(title = "Film $i", year = 2000 + i, filmTmdbId = 100 + i))
+                val savedFilm = filmRepository.save(Film(tmdbId = 100 + i, title = "Film $i", runtime = 90))
+                repository.save(testRef(title = "Film $i", year = 2000 + i, filmId = savedFilm.id))
             }
 
             val picks = repository.findRandomPicks(owned = true, watched = false, maxRuntime = 100, count = 2)
@@ -576,8 +563,8 @@ class MySqlExternalFilmRefRepositoryTest {
     fun `findRandomPicks should ignore the runtime cap when null`() =
         runBlocking {
             val filmRepository = MySqlFilmRepository()
-            filmRepository.save(Film(tmdbId = 1, title = "Long Film", runtime = 200))
-            repository.save(testRef(title = "Long Film", filmTmdbId = 1))
+            val longFilm = filmRepository.save(Film(tmdbId = 1, title = "Long Film", runtime = 200))
+            repository.save(testRef(title = "Long Film", filmId = longFilm.id))
 
             val picks = repository.findRandomPicks(owned = true, watched = false, maxRuntime = null, count = 10)
 

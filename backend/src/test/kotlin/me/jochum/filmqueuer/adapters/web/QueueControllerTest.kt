@@ -49,7 +49,7 @@ class QueueControllerTest {
         queueFilmService = mockk()
         queueImageService = mockk()
         externalFilmRefRepository = mockk()
-        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyList()
+        coEvery { externalFilmRefRepository.findByFilmTmdbIds(any()) } returns emptyMap()
         coEvery { queueImageService.deleteImageFile(any()) } returns Unit
     }
 
@@ -465,7 +465,7 @@ class QueueControllerTest {
                     genres = null,
                     posterPath = null,
                 )
-            val queueFilm = QueueFilm(queueId, film.tmdbId, Instant.now())
+            val queueFilm = QueueFilm(queueId, film.id, Instant.now())
 
             coEvery { queueFilmService.addFilmToQueue(queueId, 550) } returns queueFilm
 
@@ -525,8 +525,8 @@ class QueueControllerTest {
             val queueId = UUID.randomUUID()
             val films =
                 listOf(
-                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), null, null, null),
-                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6), null, null, null),
+                    Film(tmdbId = 550, title = "Fight Club", originalTitle = "Fight Club", releaseDate = LocalDate.of(1999, 10, 15)),
+                    Film(tmdbId = 13, title = "Forrest Gump", releaseDate = LocalDate.of(1994, 7, 6)),
                 )
 
             coEvery { queueFilmService.getQueueFilms(queueId) } returns films
@@ -559,23 +559,24 @@ class QueueControllerTest {
             val queueId = UUID.randomUUID()
             val films =
                 listOf(
-                    Film(550, "Fight Club", "Fight Club", LocalDate.of(1999, 10, 15), null, null, null),
-                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6), null, null, null),
+                    Film(tmdbId = 550, title = "Fight Club", originalTitle = "Fight Club", releaseDate = LocalDate.of(1999, 10, 15)),
+                    Film(tmdbId = 13, title = "Forrest Gump", releaseDate = LocalDate.of(1994, 7, 6)),
                 )
 
             coEvery { queueFilmService.getQueueFilms(queueId) } returns films
-            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550, 13)) } returns
-                listOf(
-                    ExternalFilmRef(
-                        id = UUID.randomUUID(),
-                        source = "LETTERBOXD",
-                        title = "Fight Club",
-                        year = 1999,
-                        filmTmdbId = 550,
-                        owned = true,
-                        watched = false,
-                        createdAt = Instant.now(),
-                    ),
+            coEvery { externalFilmRefRepository.findByFilmTmdbIds(listOf(550 to false, 13 to false)) } returns
+                mapOf(
+                    (550 to false) to
+                        ExternalFilmRef(
+                            id = UUID.randomUUID(),
+                            source = "LETTERBOXD",
+                            title = "Fight Club",
+                            year = 1999,
+                            filmId = UUID.randomUUID(),
+                            owned = true,
+                            watched = false,
+                            createdAt = Instant.now(),
+                        ),
                 )
 
             application {
@@ -673,9 +674,9 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) } returns true
+            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmId) } returns true
 
             application {
                 configureSerialization()
@@ -685,13 +686,13 @@ class QueueControllerTest {
             }
 
             // When
-            val response = client.delete("/queues/$queueId/films/$filmTmdbId")
+            val response = client.delete("/queues/$queueId/films/$filmId")
 
             // Then
             assertEquals(HttpStatusCode.OK, response.status)
             assertTrue(response.bodyAsText().contains("Film removed from queue successfully"))
 
-            coVerify { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) }
+            coVerify { queueFilmService.removeFilmFromQueue(queueId, filmId) }
         }
 
     @Test
@@ -699,9 +700,9 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) } returns false
+            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmId) } returns false
 
             application {
                 configureSerialization()
@@ -711,13 +712,13 @@ class QueueControllerTest {
             }
 
             // When
-            val response = client.delete("/queues/$queueId/films/$filmTmdbId")
+            val response = client.delete("/queues/$queueId/films/$filmId")
 
             // Then
             assertEquals(HttpStatusCode.NotFound, response.status)
             assertTrue(response.bodyAsText().contains("Film not found in queue"))
 
-            coVerify { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) }
+            coVerify { queueFilmService.removeFilmFromQueue(queueId, filmId) }
         }
 
     @Test
@@ -739,7 +740,7 @@ class QueueControllerTest {
         }
 
     @Test
-    fun `DELETE queue films should return bad request for invalid film TMDB ID`() =
+    fun `DELETE queue films should return bad request for a non-UUID film ID`() =
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
@@ -752,16 +753,11 @@ class QueueControllerTest {
             }
 
             // When
-            val response = client.delete("/queues/$queueId/films/not-a-number")
+            val response = client.delete("/queues/$queueId/films/not-a-uuid")
 
             // Then
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            val responseBody = response.bodyAsText()
-            assertTrue(
-                responseBody.contains("Invalid film TMDB ID format") ||
-                    responseBody.contains("NumberFormatException") ||
-                    responseBody.contains("For input string"),
-            )
+            assertTrue(response.bodyAsText().contains("Invalid queue ID or film ID"))
         }
 
     @Test
@@ -769,7 +765,10 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val filmOrder = listOf(550, 238, 13)
+            val film1 = UUID.randomUUID()
+            val film2 = UUID.randomUUID()
+            val film3 = UUID.randomUUID()
+            val filmOrder = listOf(film1, film2, film3)
 
             coEvery { queueFilmService.reorderQueueFilms(queueId, filmOrder) } returns true
 
@@ -787,7 +786,7 @@ class QueueControllerTest {
                     setBody(
                         """
                         {
-                            "filmOrder": [550, 238, 13]
+                            "filmOrder": ["$film1", "$film2", "$film3"]
                         }
                         """.trimIndent(),
                     )
@@ -848,7 +847,9 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val filmOrder = listOf(550, 238)
+            val film1 = UUID.randomUUID()
+            val film2 = UUID.randomUUID()
+            val filmOrder = listOf(film1, film2)
 
             coEvery { queueFilmService.reorderQueueFilms(queueId, filmOrder) } returns false
 
@@ -866,7 +867,7 @@ class QueueControllerTest {
                     setBody(
                         """
                         {
-                            "filmOrder": [550, 238]
+                            "filmOrder": ["$film1", "$film2"]
                         }
                         """.trimIndent(),
                     )
@@ -884,7 +885,8 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val filmOrder = listOf(550)
+            val filmId = UUID.randomUUID()
+            val filmOrder = listOf(filmId)
 
             coEvery { queueFilmService.reorderQueueFilms(queueId, filmOrder) } throws RuntimeException("Database error")
 
@@ -899,7 +901,7 @@ class QueueControllerTest {
             val response =
                 client.put("/queues/$queueId/films/reorder") {
                     contentType(ContentType.Application.Json)
-                    setBody("""{"filmOrder": [550]}""")
+                    setBody("""{"filmOrder": ["$filmId"]}""")
                 }
 
             // Then
@@ -913,7 +915,7 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val emptyOrder = emptyList<Int>()
+            val emptyOrder = emptyList<UUID>()
 
             coEvery { queueFilmService.reorderQueueFilms(queueId, emptyOrder) } returns true
 
@@ -943,9 +945,9 @@ class QueueControllerTest {
         testApplication {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
 
-            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmTmdbId) } throws RuntimeException("Database error")
+            coEvery { queueFilmService.removeFilmFromQueue(queueId, filmId) } throws RuntimeException("Database error")
 
             application {
                 configureSerialization()
@@ -955,7 +957,7 @@ class QueueControllerTest {
             }
 
             // When
-            val response = client.delete("/queues/$queueId/films/$filmTmdbId")
+            val response = client.delete("/queues/$queueId/films/$filmId")
 
             // Then
             assertEquals(HttpStatusCode.InternalServerError, response.status)

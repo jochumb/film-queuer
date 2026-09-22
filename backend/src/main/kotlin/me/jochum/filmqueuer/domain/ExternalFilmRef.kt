@@ -8,7 +8,7 @@ data class ExternalFilmRef(
     val source: String,
     val title: String,
     val year: Int?,
-    val filmTmdbId: Int? = null,
+    val filmId: UUID? = null,
     val owned: Boolean = false,
     val watched: Boolean = false,
     val createdAt: Instant = Instant.now(),

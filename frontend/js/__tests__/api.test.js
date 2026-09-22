@@ -125,17 +125,17 @@ describe('write endpoints', () => {
         });
     });
 
-    test('removeFilmFromQueue issues a DELETE to the film endpoint', async () => {
-        await api.removeFilmFromQueue('abc-123', 550);
-        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/queues/abc-123/films/550`, { method: 'DELETE' });
+    test('removeFilmFromQueue issues a DELETE to the film endpoint, keyed by the film\'s internal id', async () => {
+        await api.removeFilmFromQueue('abc-123', 'film-uuid-550');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/queues/abc-123/films/film-uuid-550`, { method: 'DELETE' });
     });
 
-    test('reorderQueueFilms PUTs the new film order', async () => {
-        await api.reorderQueueFilms('abc-123', [550, 238]);
+    test('reorderQueueFilms PUTs the new film order as a list of internal film ids', async () => {
+        await api.reorderQueueFilms('abc-123', ['film-uuid-550', 'film-uuid-238']);
         expect(fetch).toHaveBeenCalledWith(`${API_BASE}/queues/abc-123/films/reorder`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filmOrder: [550, 238] }),
+            body: JSON.stringify({ filmOrder: ['film-uuid-550', 'film-uuid-238'] }),
         });
     });
 
@@ -200,9 +200,9 @@ describe('write endpoints', () => {
         });
     });
 
-    test('updateFilmSortTitle PUTs the new sort title', async () => {
-        await api.updateFilmSortTitle(238, 'Godfather, The');
-        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/238/sort-title`, {
+    test('updateFilmSortTitle PUTs the new sort title, keyed by the film\'s internal id', async () => {
+        await api.updateFilmSortTitle('film-uuid-238', 'Godfather, The');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/films/film-uuid-238/sort-title`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sortTitle: 'Godfather, The' }),
@@ -215,6 +215,24 @@ describe('write endpoints', () => {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imagePath: 'https://example.com/thumb.jpg' }),
+        });
+    });
+
+    test('importOwnedCollection POSTs the raw CSV text as text/csv', async () => {
+        await api.importOwnedCollection('Name,Year\nHeat,1995');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/import/letterboxd/owned`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/csv' },
+            body: 'Name,Year\nHeat,1995',
+        });
+    });
+
+    test('importWatchedCollection POSTs the raw CSV text as text/csv', async () => {
+        await api.importWatchedCollection('Name,Year\nHeat,1995');
+        expect(fetch).toHaveBeenCalledWith(`${API_BASE}/collection/import/letterboxd/watched`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/csv' },
+            body: 'Name,Year\nHeat,1995',
         });
     });
 });

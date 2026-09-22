@@ -9,7 +9,7 @@ object ExternalFilmRefTable : Table("external_film_refs") {
     val sourceName = varchar("source", 50)
     val title = varchar("title", 255)
     val year = integer("year").nullable()
-    val filmTmdbId = integer("film_tmdb_id").references(FilmTable.tmdbId).nullable()
+    val filmId = uuid("film_id").references(FilmTable.id).nullable()
     val owned = bool("owned").default(false)
     val watched = bool("watched").default(false)
     val createdAt = timestamp("created_at").default(Instant.now())

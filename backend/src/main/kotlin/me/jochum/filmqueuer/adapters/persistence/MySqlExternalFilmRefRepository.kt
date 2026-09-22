@@ -30,7 +30,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
                 it[sourceName] = ref.source
                 it[title] = ref.title
                 it[year] = ref.year
-                it[filmTmdbId] = ref.filmTmdbId
+                it[filmId] = ref.filmId
                 it[owned] = ref.owned
                 it[watched] = ref.watched
                 it[createdAt] = ref.createdAt
@@ -45,7 +45,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
     override suspend fun update(ref: ExternalFilmRef): Boolean =
         newSuspendedTransaction {
             ExternalFilmRefTable.update({ ExternalFilmRefTable.id eq ref.id }) {
-                it[filmTmdbId] = ref.filmTmdbId
+                it[filmId] = ref.filmId
                 it[owned] = ref.owned
                 it[watched] = ref.watched
             } > 0
@@ -99,11 +99,11 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
             val sortOrder = if (sortDescending) SortOrder.DESC else SortOrder.ASC
             val joined =
                 ExternalFilmRefTable
-                    .leftJoin(FilmTable, { filmTmdbId }, { tmdbId })
+                    .leftJoin(FilmTable, { filmId }, { FilmTable.id })
                     .leftJoin(
                         FilmDirectorTable,
-                        { FilmTable.tmdbId },
-                        { FilmDirectorTable.filmTmdbId },
+                        { FilmTable.id },
+                        { FilmDirectorTable.filmId },
                         { FilmDirectorTable.billingOrder eq 0 },
                     )
                     .leftJoin(PersonTable, { FilmDirectorTable.personTmdbId }, { PersonTable.tmdbId })
@@ -141,7 +141,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
             // imported as "Days" auto-matched to the wrong "365 Days" - the row only shows up
             // under the matched title everywhere else in the UI).
             ExternalFilmRefTable
-                .leftJoin(FilmTable, { filmTmdbId }, { tmdbId })
+                .leftJoin(FilmTable, { filmId }, { FilmTable.id })
                 .selectAll()
                 .where { filterCondition(owned, watched, unmatched, removed, query) }
                 .count()
@@ -161,7 +161,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
         if (unmatched != null) {
             condition =
                 condition and
-                if (unmatched) ExternalFilmRefTable.filmTmdbId.isNull() else ExternalFilmRefTable.filmTmdbId.isNotNull()
+                if (unmatched) ExternalFilmRefTable.filmId.isNull() else ExternalFilmRefTable.filmId.isNotNull()
         }
         if (!query.isNullOrBlank()) {
             val pattern = "%${query.trim().lowercase()}%"
@@ -183,7 +183,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
         count: Int,
     ): List<ExternalFilmRef> =
         newSuspendedTransaction {
-            val joined = ExternalFilmRefTable.leftJoin(FilmTable, { filmTmdbId }, { tmdbId })
+            val joined = ExternalFilmRefTable.leftJoin(FilmTable, { filmId }, { FilmTable.id })
             var condition = filterCondition(owned, watched, unmatched = false, removed = false)
             if (maxRuntime != null) {
                 condition = condition and FilmTable.runtime.isNotNull() and (FilmTable.runtime lessEq maxRuntime)
@@ -194,22 +194,18 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
                 .take(count)
         }
 
-    override suspend fun findByFilmTmdbId(tmdbId: Int): ExternalFilmRef? =
+    override suspend fun findByFilmTmdbIds(refs: Collection<Pair<Int, Boolean>>): Map<Pair<Int, Boolean>, ExternalFilmRef> =
         newSuspendedTransaction {
-            ExternalFilmRefTable.selectAll()
-                .where { ExternalFilmRefTable.filmTmdbId eq tmdbId }
-                .singleOrNull()
-                ?.toExternalFilmRef()
-        }
-
-    override suspend fun findByFilmTmdbIds(tmdbIds: Collection<Int>): List<ExternalFilmRef> =
-        newSuspendedTransaction {
-            if (tmdbIds.isEmpty()) {
-                emptyList()
+            if (refs.isEmpty()) {
+                emptyMap()
             } else {
-                ExternalFilmRefTable.selectAll()
-                    .where { (ExternalFilmRefTable.filmTmdbId inList tmdbIds) and (ExternalFilmRefTable.removed eq false) }
-                    .map { it.toExternalFilmRef() }
+                val condition =
+                    refs.map { (tmdbId, tv) -> (FilmTable.tmdbId eq tmdbId) and (FilmTable.tv eq tv) }
+                        .reduce { a, b -> a or b }
+                (ExternalFilmRefTable innerJoin FilmTable)
+                    .selectAll()
+                    .where { condition and (ExternalFilmRefTable.removed eq false) }
+                    .associate { row -> (row[FilmTable.tmdbId] to row[FilmTable.tv]) to row.toExternalFilmRef() }
             }
         }
 
@@ -219,7 +215,7 @@ class MySqlExternalFilmRefRepository : ExternalFilmRefRepository {
             source = this[ExternalFilmRefTable.sourceName],
             title = this[ExternalFilmRefTable.title],
             year = this[ExternalFilmRefTable.year],
-            filmTmdbId = this[ExternalFilmRefTable.filmTmdbId],
+            filmId = this[ExternalFilmRefTable.filmId],
             owned = this[ExternalFilmRefTable.owned],
             watched = this[ExternalFilmRefTable.watched],
             createdAt = this[ExternalFilmRefTable.createdAt],

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import java.sql.SQLTransactionRollbackException
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -78,13 +79,15 @@ class LetterboxdImportServiceTest {
     @Test
     fun `importCollection should create a new owned ref and auto-match an unambiguous title`() =
         runBlocking {
+            val matchedFilm = Film(tmdbId = 550, title = "Fight Club")
+
             coEvery { externalFilmRefRepository.findBySourceTitleYear("LETTERBOXD", "Fight Club", 1999) } returns null
             coEvery { externalFilmRefRepository.save(any()) } returns mockk()
             coEvery { externalFilmRefRepository.update(any()) } returns true
             coEvery { tmdbService.searchMovies("Fight Club", 1999) } returns movieSearchResult()
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns matchedFilm
 
             val summary = service.importCollection(collectionCsv)
 
@@ -100,7 +103,7 @@ class LetterboxdImportServiceTest {
                 )
             }
             coVerify { filmRepository.save(match { it.tmdbId == 550 }) }
-            coVerify { externalFilmRefRepository.update(match { it.filmTmdbId == 550 }) }
+            coVerify { externalFilmRefRepository.update(match { it.filmId == matchedFilm.id }) }
         }
 
     @Test
@@ -111,8 +114,8 @@ class LetterboxdImportServiceTest {
             coEvery { externalFilmRefRepository.update(any()) } returns true
             coEvery { tmdbService.searchMovies("Fight Club", 1999) } returns movieSearchResult()
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns Film(tmdbId = 550, title = "Fight Club")
 
             val summary = service.importWatched(watchedCsv)
 
@@ -170,8 +173,8 @@ class LetterboxdImportServiceTest {
             coEvery { externalFilmRefRepository.update(any()) } returns true
             coEvery { tmdbService.searchMovies("Fight Club", 1999) } returns obscureDuplicateAndTheRealFilm
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns Film(tmdbId = 550, title = "Fight Club")
 
             val summary = service.importCollection(collectionCsv)
 
@@ -199,8 +202,8 @@ class LetterboxdImportServiceTest {
             coEvery { externalFilmRefRepository.update(any()) } returns true
             coEvery { tmdbService.searchMovies("Fight Club", 1999) } returns resultsWithADocumentary
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns Film(tmdbId = 550, title = "Fight Club")
 
             val summary = service.importCollection(collectionCsv)
 
@@ -225,13 +228,14 @@ class LetterboxdImportServiceTest {
     @Test
     fun `importCollection should merge flags into an existing ref instead of creating a duplicate`() =
         runBlocking {
+            val existingFilmId = UUID.randomUUID()
             val existing =
                 ExternalFilmRef(
                     id = UUID.randomUUID(),
                     source = "LETTERBOXD",
                     title = "Fight Club",
                     year = 1999,
-                    filmTmdbId = 550,
+                    filmId = existingFilmId,
                     owned = false,
                     watched = true,
                 )
@@ -244,7 +248,7 @@ class LetterboxdImportServiceTest {
             assertEquals(0, summary.created)
             assertEquals(1, summary.updated)
             coVerify(exactly = 0) { externalFilmRefRepository.save(any()) }
-            coVerify { externalFilmRefRepository.update(match { it.owned && it.watched && it.filmTmdbId == 550 }) }
+            coVerify { externalFilmRefRepository.update(match { it.owned && it.watched && it.filmId == existingFilmId }) }
             // Already matched, so no TMDB calls should happen for this row.
             coVerify(exactly = 0) { tmdbService.searchMovies(any()) }
         }
@@ -258,7 +262,7 @@ class LetterboxdImportServiceTest {
                     source = "LETTERBOXD",
                     title = "Fight Club",
                     year = 1999,
-                    filmTmdbId = 550,
+                    filmId = UUID.randomUUID(),
                     owned = false,
                     watched = true,
                     removed = true,
@@ -277,17 +281,18 @@ class LetterboxdImportServiceTest {
     fun `linkManually should resolve TMDB details and update the ref`() =
         runBlocking {
             val ref = ExternalFilmRef(id = UUID.randomUUID(), source = "LETTERBOXD", title = "Fight Club", year = 1999)
+            val matchedFilm = Film(tmdbId = 550, title = "Fight Club")
 
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns matchedFilm
             coEvery { externalFilmRefRepository.update(any()) } returns true
 
             val result = service.linkManually(ref.id, 550)
 
-            assertEquals(550, result?.filmTmdbId)
-            coVerify { externalFilmRefRepository.update(match { it.filmTmdbId == 550 }) }
+            assertEquals(matchedFilm.id, result?.filmId)
+            coVerify { externalFilmRefRepository.update(match { it.filmId == matchedFilm.id }) }
         }
 
     @Test
@@ -301,16 +306,17 @@ class LetterboxdImportServiceTest {
                     firstAirDate = "2019-05-06",
                     seasons = emptyList(),
                 )
+            val matchedTvShow = Film(tmdbId = 87108, title = "Chernobyl", tv = true)
 
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getTvDetails(87108) } returns tvDetails
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns matchedTvShow
             coEvery { externalFilmRefRepository.update(any()) } returns true
 
             val result = service.linkManually(ref.id, 87108, tv = true)
 
-            assertEquals(87108, result?.filmTmdbId)
+            assertEquals(matchedTvShow.id, result?.filmId)
             coVerify { filmRepository.save(match { it.tv && it.title == "Chernobyl" && it.directorTmdbIds.isEmpty() }) }
             coVerify(exactly = 0) { personRepository.save(any()) }
             coVerify(exactly = 0) { tmdbService.getMovieDetails(any()) }
@@ -345,18 +351,19 @@ class LetterboxdImportServiceTest {
                                 ),
                         ),
                 )
+            val matchedTvShow = Film(tmdbId = 87108, title = "Chernobyl", tv = true, directorTmdbIds = listOf(212408))
 
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getTvDetails(87108) } returns tvDetails
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns matchedTvShow
             coEvery { personRepository.findByTmdbId(212408) } returns null
             coEvery { personRepository.save(any()) } returns mockk()
             coEvery { externalFilmRefRepository.update(any()) } returns true
 
             val result = service.linkManually(ref.id, 87108, tv = true)
 
-            assertEquals(87108, result?.filmTmdbId)
+            assertEquals(matchedTvShow.id, result?.filmId)
             // Only the actual director (5 episodes, job = Director) is resolved - the writer is not.
             coVerify { filmRepository.save(match { it.directorTmdbIds == listOf(212408) }) }
             coVerify {
@@ -383,20 +390,24 @@ class LetterboxdImportServiceTest {
                 movieDetails().copy(
                     credits = TmdbCredits(crew = listOf(TmdbCrewMember(id = 7, name = "David Fincher", job = "Director"))),
                 )
+            // The film was already inserted by an earlier import, before director support existed.
+            val existingFilm = Film(tmdbId = 550, title = "Fight Club")
 
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getMovieDetails(550) } returns detailsWithDirector
             coEvery { personRepository.findByTmdbId(7) } returns null
             coEvery { personRepository.save(any()) } returns mockk()
-            // The film was already inserted by an earlier import, before director support existed.
-            coEvery { filmRepository.findByTmdbId(550) } returns Film(tmdbId = 550, title = "Fight Club")
+            coEvery { filmRepository.findByTmdbId(550, false) } returns existingFilm
             coEvery { filmRepository.update(any()) } returns true
             coEvery { externalFilmRefRepository.update(any()) } returns true
 
             service.linkManually(ref.id, 550)
 
             coVerify(exactly = 0) { filmRepository.save(any()) }
-            coVerify { filmRepository.update(match { it.tmdbId == 550 && it.directorTmdbIds == listOf(7) }) }
+            // update() must be called with the *existing* film's real id, not a freshly-generated
+            // one, since it's keyed by id rather than tmdbId.
+            coVerify { filmRepository.update(match { it.id == existingFilm.id && it.tmdbId == 550 && it.directorTmdbIds == listOf(7) }) }
+            coVerify { externalFilmRefRepository.update(match { it.filmId == existingFilm.id }) }
         }
 
     @Test
@@ -412,8 +423,8 @@ class LetterboxdImportServiceTest {
             coEvery { tmdbService.getMovieDetails(550) } returns detailsWithDirector
             coEvery { personRepository.findByTmdbId(7) } returns null
             coEvery { personRepository.save(any()) } returns mockk()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns Film(tmdbId = 550, title = "Fight Club", directorTmdbIds = listOf(7))
             coEvery { externalFilmRefRepository.update(any()) } returns true
 
             service.linkManually(ref.id, 550)
@@ -437,8 +448,8 @@ class LetterboxdImportServiceTest {
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getMovieDetails(550) } returns detailsWithDirector
             coEvery { personRepository.findByTmdbId(7) } returns existingPerson
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
-            coEvery { filmRepository.save(any()) } returns mockk()
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
+            coEvery { filmRepository.save(any()) } returns Film(tmdbId = 550, title = "Fight Club", directorTmdbIds = listOf(7))
             coEvery { externalFilmRefRepository.update(any()) } returns true
 
             service.linkManually(ref.id, 550)
@@ -455,7 +466,7 @@ class LetterboxdImportServiceTest {
 
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
             coEvery { filmRepository.save(any()) } answers {
                 saveAttempts++
                 if (saveAttempts == 1) throw SQLTransactionRollbackException("Deadlock found trying to get lock")
@@ -465,7 +476,7 @@ class LetterboxdImportServiceTest {
 
             val result = service.linkManually(ref.id, 550)
 
-            assertEquals(550, result?.filmTmdbId)
+            assertNotNull(result?.filmId)
             assertEquals(2, saveAttempts)
         }
 
@@ -477,7 +488,7 @@ class LetterboxdImportServiceTest {
 
             coEvery { externalFilmRefRepository.findById(ref.id) } returns ref
             coEvery { tmdbService.getMovieDetails(550) } returns movieDetails()
-            coEvery { filmRepository.findByTmdbId(any()) } returns null
+            coEvery { filmRepository.findByTmdbId(any(), any()) } returns null
             coEvery { filmRepository.save(any()) } answers {
                 saveAttempts++
                 throw RuntimeException("not a deadlock")

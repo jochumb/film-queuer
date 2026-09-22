@@ -49,28 +49,27 @@ class MySqlQueueFilmRepositoryTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
             val film =
                 Film(
-                    filmTmdbId,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
 
             // Create queue and film first
-            filmRepository.save(film)
+            val savedFilm = filmRepository.save(film)
             createTestQueue(queueId)
 
             // When
-            val result = repository.addFilmToQueue(queueId, filmTmdbId)
+            val result = repository.addFilmToQueue(queueId, savedFilm.id)
 
             // Then
             assertEquals(queueId, result.queueId)
-            assertEquals(filmTmdbId, result.filmTmdbId)
+            assertEquals(savedFilm.id, result.filmId)
             assertTrue(result.addedAt.isBefore(Instant.now().plusSeconds(60)))
             assertTrue(result.addedAt.isAfter(Instant.now().minusSeconds(60)))
         }
@@ -80,28 +79,27 @@ class MySqlQueueFilmRepositoryTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
             val film =
                 Film(
-                    filmTmdbId,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
 
-            filmRepository.save(film)
+            val savedFilm = filmRepository.save(film)
             createTestQueue(queueId)
-            repository.addFilmToQueue(queueId, filmTmdbId)
+            repository.addFilmToQueue(queueId, savedFilm.id)
 
             // When
-            val result = repository.removeFilmFromQueue(queueId, filmTmdbId)
+            val result = repository.removeFilmFromQueue(queueId, savedFilm.id)
 
             // Then
             assertTrue(result)
-            assertFalse(repository.isFilmInQueue(queueId, filmTmdbId))
+            assertFalse(repository.isFilmInQueue(queueId, savedFilm.id))
         }
 
     @Test
@@ -109,11 +107,11 @@ class MySqlQueueFilmRepositoryTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
             createTestQueue(queueId)
 
             // When
-            val result = repository.removeFilmFromQueue(queueId, filmTmdbId)
+            val result = repository.removeFilmFromQueue(queueId, filmId)
 
             // Then
             assertFalse(result)
@@ -127,40 +125,40 @@ class MySqlQueueFilmRepositoryTest {
             val films =
                 listOf(
                     Film(
-                        550,
-                        "Fight Club",
-                        "Fight Club",
-                        LocalDate.of(1999, 10, 15),
-                        139,
-                        listOf("Drama", "Thriller"),
-                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                        tmdbId = 550,
+                        title = "Fight Club",
+                        originalTitle = "Fight Club",
+                        releaseDate = LocalDate.of(1999, 10, 15),
+                        runtime = 139,
+                        genres = listOf("Drama", "Thriller"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                     ),
                     Film(
-                        13,
-                        "Forrest Gump",
-                        "Forrest Gump",
-                        LocalDate.of(1994, 7, 6),
-                        142,
-                        listOf("Drama", "Romance"),
-                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                        tmdbId = 13,
+                        title = "Forrest Gump",
+                        originalTitle = "Forrest Gump",
+                        releaseDate = LocalDate.of(1994, 7, 6),
+                        runtime = 142,
+                        genres = listOf("Drama", "Romance"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
                     ),
                     Film(
-                        238,
-                        "The Godfather",
-                        "The Godfather",
-                        LocalDate.of(1972, 3, 14),
-                        175,
-                        listOf("Crime", "Drama"),
-                        "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                        tmdbId = 238,
+                        title = "The Godfather",
+                        originalTitle = "The Godfather",
+                        releaseDate = LocalDate.of(1972, 3, 14),
+                        runtime = 175,
+                        genres = listOf("Crime", "Drama"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
                     ),
                 )
 
             createTestQueue(queueId)
-            films.forEach { filmRepository.save(it) }
+            val savedFilms = films.map { filmRepository.save(it) }
 
             // Add films to queue with small delays to ensure ordering
-            films.forEach { film ->
-                repository.addFilmToQueue(queueId, film.tmdbId)
+            savedFilms.forEach { film ->
+                repository.addFilmToQueue(queueId, film.id)
                 Thread.sleep(10) // Small delay to ensure different timestamps
             }
 
@@ -215,8 +213,8 @@ class MySqlQueueFilmRepositoryTest {
                 )
 
             createTestQueue(queueId)
-            filmRepository.save(filmWithAllFields)
-            repository.addFilmToQueue(queueId, filmWithAllFields.tmdbId)
+            val savedFilm = filmRepository.save(filmWithAllFields)
+            repository.addFilmToQueue(queueId, savedFilm.id)
 
             // When
             val result = repository.findFilmsByQueueId(queueId)
@@ -267,24 +265,23 @@ class MySqlQueueFilmRepositoryTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
             val film =
                 Film(
-                    filmTmdbId,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
 
-            filmRepository.save(film)
+            val savedFilm = filmRepository.save(film)
             createTestQueue(queueId)
-            repository.addFilmToQueue(queueId, filmTmdbId)
+            repository.addFilmToQueue(queueId, savedFilm.id)
 
             // When
-            val result = repository.isFilmInQueue(queueId, filmTmdbId)
+            val result = repository.isFilmInQueue(queueId, savedFilm.id)
 
             // Then
             assertTrue(result)
@@ -295,11 +292,11 @@ class MySqlQueueFilmRepositoryTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val filmTmdbId = 550
+            val filmId = UUID.randomUUID()
             createTestQueue(queueId)
 
             // When
-            val result = repository.isFilmInQueue(queueId, filmTmdbId)
+            val result = repository.isFilmInQueue(queueId, filmId)
 
             // Then
             assertFalse(result)
@@ -311,27 +308,26 @@ class MySqlQueueFilmRepositoryTest {
             // Given
             val queue1Id = UUID.randomUUID()
             val queue2Id = UUID.randomUUID()
-            val filmTmdbId = 550
             val film =
                 Film(
-                    filmTmdbId,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
 
-            filmRepository.save(film)
+            val savedFilm = filmRepository.save(film)
             createTestQueue(queue1Id)
             createTestQueue(queue2Id)
 
-            repository.addFilmToQueue(queue1Id, filmTmdbId)
+            repository.addFilmToQueue(queue1Id, savedFilm.id)
 
             // When & Then
-            assertTrue(repository.isFilmInQueue(queue1Id, filmTmdbId))
-            assertFalse(repository.isFilmInQueue(queue2Id, filmTmdbId))
+            assertTrue(repository.isFilmInQueue(queue1Id, savedFilm.id))
+            assertFalse(repository.isFilmInQueue(queue2Id, savedFilm.id))
 
             assertEquals(1, repository.findFilmsByQueueId(queue1Id).size)
             assertEquals(0, repository.findFilmsByQueueId(queue2Id).size)
@@ -345,44 +341,47 @@ class MySqlQueueFilmRepositoryTest {
             val films =
                 listOf(
                     Film(
-                        550,
-                        "Fight Club",
-                        "Fight Club",
-                        LocalDate.of(1999, 10, 15),
-                        139,
-                        listOf("Drama", "Thriller"),
-                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                        tmdbId = 550,
+                        title = "Fight Club",
+                        originalTitle = "Fight Club",
+                        releaseDate = LocalDate.of(1999, 10, 15),
+                        runtime = 139,
+                        genres = listOf("Drama", "Thriller"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                     ),
                     Film(
-                        13,
-                        "Forrest Gump",
-                        "Forrest Gump",
-                        LocalDate.of(1994, 7, 6),
-                        142,
-                        listOf("Drama", "Romance"),
-                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                        tmdbId = 13,
+                        title = "Forrest Gump",
+                        originalTitle = "Forrest Gump",
+                        releaseDate = LocalDate.of(1994, 7, 6),
+                        runtime = 142,
+                        genres = listOf("Drama", "Romance"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
                     ),
                     Film(
-                        238,
-                        "The Godfather",
-                        "The Godfather",
-                        LocalDate.of(1972, 3, 14),
-                        175,
-                        listOf("Crime", "Drama"),
-                        "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                        tmdbId = 238,
+                        title = "The Godfather",
+                        originalTitle = "The Godfather",
+                        releaseDate = LocalDate.of(1972, 3, 14),
+                        runtime = 175,
+                        genres = listOf("Crime", "Drama"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
                     ),
                 )
 
             createTestQueue(queueId)
-            films.forEach { filmRepository.save(it) }
+            val savedFilms = films.map { filmRepository.save(it) }
 
             // Add films to queue
-            films.forEach { film ->
-                repository.addFilmToQueue(queueId, film.tmdbId)
+            savedFilms.forEach { film ->
+                repository.addFilmToQueue(queueId, film.id)
             }
 
             // When - Reorder films (reverse order)
-            val newOrder = listOf(238, 13, 550) // The Godfather, Forrest Gump, Fight Club
+            val godfather = savedFilms.first { it.tmdbId == 238 }
+            val gump = savedFilms.first { it.tmdbId == 13 }
+            val fightClub = savedFilms.first { it.tmdbId == 550 }
+            val newOrder = listOf(godfather.id, gump.id, fightClub.id)
             val result = repository.reorderQueueFilms(queueId, newOrder)
 
             // Then
@@ -403,42 +402,44 @@ class MySqlQueueFilmRepositoryTest {
             val films =
                 listOf(
                     Film(
-                        550,
-                        "Fight Club",
-                        "Fight Club",
-                        LocalDate.of(1999, 10, 15),
-                        139,
-                        listOf("Drama", "Thriller"),
-                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                        tmdbId = 550,
+                        title = "Fight Club",
+                        originalTitle = "Fight Club",
+                        releaseDate = LocalDate.of(1999, 10, 15),
+                        runtime = 139,
+                        genres = listOf("Drama", "Thriller"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                     ),
                     Film(
-                        13,
-                        "Forrest Gump",
-                        "Forrest Gump",
-                        LocalDate.of(1994, 7, 6),
-                        142,
-                        listOf("Drama", "Romance"),
-                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                        tmdbId = 13,
+                        title = "Forrest Gump",
+                        originalTitle = "Forrest Gump",
+                        releaseDate = LocalDate.of(1994, 7, 6),
+                        runtime = 142,
+                        genres = listOf("Drama", "Romance"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
                     ),
                     Film(
-                        238,
-                        "The Godfather",
-                        "The Godfather",
-                        LocalDate.of(1972, 3, 14),
-                        175,
-                        listOf("Crime", "Drama"),
-                        "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                        tmdbId = 238,
+                        title = "The Godfather",
+                        originalTitle = "The Godfather",
+                        releaseDate = LocalDate.of(1972, 3, 14),
+                        runtime = 175,
+                        genres = listOf("Crime", "Drama"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
                     ),
                 )
 
             createTestQueue(queueId)
-            films.forEach { filmRepository.save(it) }
-            films.forEach { film ->
-                repository.addFilmToQueue(queueId, film.tmdbId)
+            val savedFilms = films.map { filmRepository.save(it) }
+            savedFilms.forEach { film ->
+                repository.addFilmToQueue(queueId, film.id)
             }
 
             // When - Only reorder first two films
-            val partialOrder = listOf(13, 550) // Forrest Gump, Fight Club
+            val gump = savedFilms.first { it.tmdbId == 13 }
+            val fightClub = savedFilms.first { it.tmdbId == 550 }
+            val partialOrder = listOf(gump.id, fightClub.id)
             val result = repository.reorderQueueFilms(queueId, partialOrder)
 
             // Then
@@ -470,14 +471,14 @@ class MySqlQueueFilmRepositoryTest {
         runBlocking {
             // Given
             val queueId = UUID.randomUUID()
-            val film = Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15), null, null, null)
+            val film = Film(tmdbId = 550, title = "Fight Club", releaseDate = LocalDate.of(1999, 10, 15))
 
             createTestQueue(queueId)
-            filmRepository.save(film)
-            repository.addFilmToQueue(queueId, film.tmdbId)
+            val savedFilm = filmRepository.save(film)
+            repository.addFilmToQueue(queueId, savedFilm.id)
 
             // When - Try to reorder with a non-existent film ID
-            val orderWithNonExistent = listOf(550, 999) // 999 doesn't exist in queue
+            val orderWithNonExistent = listOf(savedFilm.id, UUID.randomUUID())
             val result = repository.reorderQueueFilms(queueId, orderWithNonExistent)
 
             // Then
@@ -496,45 +497,48 @@ class MySqlQueueFilmRepositoryTest {
             val films =
                 listOf(
                     Film(
-                        550,
-                        "Fight Club",
-                        "Fight Club",
-                        LocalDate.of(1999, 10, 15),
-                        139,
-                        listOf("Drama", "Thriller"),
-                        "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                        tmdbId = 550,
+                        title = "Fight Club",
+                        originalTitle = "Fight Club",
+                        releaseDate = LocalDate.of(1999, 10, 15),
+                        runtime = 139,
+                        genres = listOf("Drama", "Thriller"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                     ),
                     Film(
-                        13,
-                        "Forrest Gump",
-                        "Forrest Gump",
-                        LocalDate.of(1994, 7, 6),
-                        142,
-                        listOf("Drama", "Romance"),
-                        "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
+                        tmdbId = 13,
+                        title = "Forrest Gump",
+                        originalTitle = "Forrest Gump",
+                        releaseDate = LocalDate.of(1994, 7, 6),
+                        runtime = 142,
+                        genres = listOf("Drama", "Romance"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
                     ),
                     Film(
-                        238,
-                        "The Godfather",
-                        "The Godfather",
-                        LocalDate.of(1972, 3, 14),
-                        175,
-                        listOf("Crime", "Drama"),
-                        "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                        tmdbId = 238,
+                        title = "The Godfather",
+                        originalTitle = "The Godfather",
+                        releaseDate = LocalDate.of(1972, 3, 14),
+                        runtime = 175,
+                        genres = listOf("Crime", "Drama"),
+                        posterPath = "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
                     ),
                 )
 
             createTestQueue(queueId)
-            films.forEach { filmRepository.save(it) }
+            val savedFilms = films.map { filmRepository.save(it) }
 
             // Add films in one order
-            films.forEach { film ->
-                repository.addFilmToQueue(queueId, film.tmdbId)
+            savedFilms.forEach { film ->
+                repository.addFilmToQueue(queueId, film.id)
                 Thread.sleep(10) // Small delay to ensure different timestamps
             }
 
             // Reorder them differently
-            repository.reorderQueueFilms(queueId, listOf(238, 550, 13))
+            val godfather = savedFilms.first { it.tmdbId == 238 }
+            val fightClub = savedFilms.first { it.tmdbId == 550 }
+            val gump = savedFilms.first { it.tmdbId == 13 }
+            repository.reorderQueueFilms(queueId, listOf(godfather.id, fightClub.id, gump.id))
 
             // When
             val result = repository.findFilmsByQueueId(queueId)
@@ -553,16 +557,16 @@ class MySqlQueueFilmRepositoryTest {
             val queueId = UUID.randomUUID()
             val films =
                 listOf(
-                    Film(550, "Fight Club", null, LocalDate.of(1999, 10, 15), null, null, null),
-                    Film(13, "Forrest Gump", null, LocalDate.of(1994, 7, 6), null, null, null),
+                    Film(tmdbId = 550, title = "Fight Club", releaseDate = LocalDate.of(1999, 10, 15)),
+                    Film(tmdbId = 13, title = "Forrest Gump", releaseDate = LocalDate.of(1994, 7, 6)),
                 )
 
             createTestQueue(queueId)
-            films.forEach { filmRepository.save(it) }
+            val savedFilms = films.map { filmRepository.save(it) }
 
             // When - Add films sequentially
-            val result1 = repository.addFilmToQueue(queueId, 550)
-            val result2 = repository.addFilmToQueue(queueId, 13)
+            val result1 = repository.addFilmToQueue(queueId, savedFilms[0].id)
+            val result2 = repository.addFilmToQueue(queueId, savedFilms[1].id)
 
             // Then - Each film should get the next sort order
             assertEquals(0, result1.sortOrder)
@@ -577,25 +581,26 @@ class MySqlQueueFilmRepositoryTest {
     fun `should prevent duplicate film entries in same queue`() {
         // Given
         val queueId = UUID.randomUUID()
-        val filmTmdbId = 550
         val film =
             Film(
-                filmTmdbId,
-                "Fight Club",
-                "Fight Club",
-                LocalDate.of(1999, 10, 15),
-                139,
-                listOf("Drama", "Thriller"),
-                "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                tmdbId = 550,
+                title = "Fight Club",
+                originalTitle = "Fight Club",
+                releaseDate = LocalDate.of(1999, 10, 15),
+                runtime = 139,
+                genres = listOf("Drama", "Thriller"),
+                posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
             )
 
+        lateinit var savedFilmId: UUID
         runBlocking {
-            filmRepository.save(film)
+            val savedFilm = filmRepository.save(film)
+            savedFilmId = savedFilm.id
             createTestQueue(queueId)
-            repository.addFilmToQueue(queueId, filmTmdbId)
+            repository.addFilmToQueue(queueId, savedFilmId)
 
             // Verify film was added
-            assertTrue(repository.isFilmInQueue(queueId, filmTmdbId))
+            assertTrue(repository.isFilmInQueue(queueId, savedFilmId))
             assertEquals(1, repository.findFilmsByQueueId(queueId).size)
         }
 
@@ -603,7 +608,7 @@ class MySqlQueueFilmRepositoryTest {
         val exception =
             assertFailsWith<ExposedSQLException> {
                 runBlocking {
-                    repository.addFilmToQueue(queueId, filmTmdbId)
+                    repository.addFilmToQueue(queueId, savedFilmId)
                 }
             }
 
@@ -623,32 +628,32 @@ class MySqlQueueFilmRepositoryTest {
             val otherQueueId = UUID.randomUUID()
             val film1 =
                 Film(
-                    550,
-                    "Fight Club",
-                    "Fight Club",
-                    LocalDate.of(1999, 10, 15),
-                    139,
-                    listOf("Drama", "Thriller"),
-                    "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    tmdbId = 550,
+                    title = "Fight Club",
+                    originalTitle = "Fight Club",
+                    releaseDate = LocalDate.of(1999, 10, 15),
+                    runtime = 139,
+                    genres = listOf("Drama", "Thriller"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 )
             val film2 =
                 Film(
-                    238,
-                    "The Godfather",
-                    "The Godfather",
-                    LocalDate.of(1972, 3, 14),
-                    175,
-                    listOf("Drama", "Crime"),
-                    "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+                    tmdbId = 238,
+                    title = "The Godfather",
+                    originalTitle = "The Godfather",
+                    releaseDate = LocalDate.of(1972, 3, 14),
+                    runtime = 175,
+                    genres = listOf("Drama", "Crime"),
+                    posterPath = "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
                 )
 
-            filmRepository.save(film1)
-            filmRepository.save(film2)
+            val savedFilm1 = filmRepository.save(film1)
+            val savedFilm2 = filmRepository.save(film2)
             createTestQueue(queueId)
             createTestQueue(otherQueueId)
-            repository.addFilmToQueue(queueId, film1.tmdbId)
-            repository.addFilmToQueue(queueId, film2.tmdbId)
-            repository.addFilmToQueue(otherQueueId, film1.tmdbId)
+            repository.addFilmToQueue(queueId, savedFilm1.id)
+            repository.addFilmToQueue(queueId, savedFilm2.id)
+            repository.addFilmToQueue(otherQueueId, savedFilm1.id)
 
             // When
             val result = repository.deleteAllForQueue(queueId)
