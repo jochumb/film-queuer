@@ -105,13 +105,13 @@ Quick reference only — the `*Table.kt` files in `adapters/persistence/` are au
 
 ```sql
 persons: tmdb_id (PK), name, department, image_path, sort_name
-films: tmdb_id (PK), title, original_title, release_date, runtime, genres, poster_path,
-       tv (BOOLEAN), sort_title
+films: id (UUID, PK), tmdb_id, title, original_title, release_date, runtime, genres, poster_path,
+       tv (BOOLEAN), sort_title — UNIQUE (tmdb_id, tv)
 queues: id (UUID, PK), type, person_tmdb_id, name, description, image_path (named queues only,
         a local /images/queue/... path — see QueueImageService), created_at, sort_order
-queue_films: queue_id (UUID), film_tmdb_id, added_at, sort_order — PK (queue_id, film_tmdb_id)
-film_directors: film_tmdb_id (FK), person_tmdb_id (FK), billing_order — PK (film_tmdb_id, person_tmdb_id)
-external_film_refs: id (UUID, PK), source, title, year, film_tmdb_id (FK, nullable until matched),
+queue_films: queue_id (UUID), film_id (FK), added_at, sort_order — PK (queue_id, film_id)
+film_directors: film_id (FK), person_tmdb_id (FK), billing_order — PK (film_id, person_tmdb_id)
+external_film_refs: id (UUID, PK), source, title, year, film_id (FK, nullable until matched),
                      owned, watched, created_at, removed — UNIQUE (source, title, year)
 ```
 
@@ -135,6 +135,7 @@ Non-obvious routing facts worth knowing without reading every controller:
 7. **Additive vs. Replace Persistence**: `save()` on Film/ExternalFilmRef is insert-if-absent and never clobbers existing richer data (e.g. directors); `update()` is a full replace, used only when explicitly re-resolving/re-matching. Dedicated single-field updates (`updateSortName`, `updateSortTitle`, `setRemoved`) exist specifically so a general-purpose `update()`/re-import never accidentally reverts a manual correction
 8. **Shared TMDB→Film Mapping**: `TmdbFilmFactory` is the one place that maps TMDB movie/TV details onto the domain `Film` shape (including TV runtime calculation and director resolution), used by both `QueueFilmService` and `LetterboxdImportService` so this logic isn't duplicated
 9. **Local Copies of User-Provided Images**: Named queue thumbnails are downloaded and stored on disk (`LocalQueueImageStorage`, behind the `QueueImageStorage` port) rather than just persisting the source URL, so the app doesn't break if that URL later changes or disappears. `QueueImageService` orchestrates the download-then-persist-then-cleanup-old-file sequence so a replaced/cleared image never leaks an orphaned file. The storage directory is a Docker-mounted volume (`queue_images`) so copies survive container rebuilds
+10. **Film Identity is a UUID, Not the TMDB id**: TMDB movie ids and TV ids are separate namespaces and can collide on the same number (e.g. movie 206647 "Spectre" and TV show 206647 "Histoire(s) du cinéma"), so `films.id` (UUID) — not `tmdb_id` — is the real primary key, and every FK table (`queue_films`, `film_directors`, `external_film_refs`) references `film_id`. `(tmdb_id, tv)` is a `UNIQUE` business key used for TMDB-driven lookups (search results, Letterboxd matching), resolved to the internal `id` at the repository layer; callers that already hold an existing film (removing/reordering a queue film, editing its sort title) address it by `id` directly rather than `(tmdbId, tv)`
 
 ## Technology Stack
 
